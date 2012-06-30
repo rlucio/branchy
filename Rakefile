@@ -17,10 +17,12 @@ Jeweler::Tasks.new do |gem|
   gem.name = "Scheduler"
   gem.homepage = "http://github.com/rlucio/Scheduler"
   gem.license = "MIT"
-  gem.summary = %Q{TODO: one-line summary of your gem}
-  gem.description = %Q{TODO: longer description of your gem}
+  gem.summary = %Q{branch-bound scheduler}
+  gem.description = %Q{scheduler for the lasso project}
   gem.email = "ryan.lucio@sv.cmu.edu"
   gem.authors = ["Ryan Lucio"]
+  gem.files = Dir.glob('lib/**/*.rb') + Dir.glob('ext/**/*.{c,h,rb}')
+  gem.extensions = ['ext/Scheduler/extconf.rb']
   # dependencies defined in Gemfile
 end
 Jeweler::RubygemsDotOrgTasks.new
@@ -31,16 +33,6 @@ Rake::TestTask.new(:test) do |test|
   test.pattern = 'test/**/test_*.rb'
   test.verbose = true
 end
-
-require 'rcov/rcovtask'
-Rcov::RcovTask.new do |test|
-  test.libs << 'test'
-  test.pattern = 'test/**/test_*.rb'
-  test.verbose = true
-  test.rcov_opts << '--exclude "gems/*"'
-end
-
-task :default => :test
 
 require 'rdoc/task'
 Rake::RDocTask.new do |rdoc|
