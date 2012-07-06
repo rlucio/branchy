@@ -3,6 +3,8 @@
 A basic - probably naive - implementation of a branch-and-bound based
 scheduler for pre-processed, weighted data.
 
+== How It Works
+
 The best way to explain how it works is probably with a simple example.
 
 Say we want to find the 'best' schedule for four people.  We want to
@@ -55,9 +57,9 @@ with the highest weight, so we continue down that branch of the tree
 first.
 
 From the best potential path, we take another step forward.  We apply
-the same technique as before, but at a depth of two we keep the value
+the same technique as before, but at a depth of two. We keep the value
 from depth 1 and must pick an unique value for S2 before filling in
-S3/S4 with BIS values.
+S3/S4 with BIS (best in slot) values.
 
 Depth 2 (subtree 1C)
 
@@ -67,8 +69,8 @@ Depth 2 (subtree 1C)
 2C [ 1.212(E3), 1.222(E4), 1.111(E1), 1.122(E1) ] = 4.667
 
 We are going to keep iterating on the tree, moving deeper until we
-find a valid solution -- one that has a unique entity in each slot.
-This is called 'fathoming'.
+find a complete solution -- one that has a unique entity in each slot.
+This process is called 'fathoming'.
 
 Depth 3 (subtree 1C->2A)
 
@@ -76,10 +78,10 @@ Depth 3 (subtree 1C->2A)
 3A [ 1.212(E3), 1.201(E1), 1.110(E2), 1.222(E4) ] = 4.745 *** complete solution ***
 3B [ 1.212(E3), 1.201(E1), 1.222(E4), 0.122(E2) ] = 3.757 *** complete solution ***
 
-Here's where things get interesting.  We've reached 3 levels into a
-sub-tree and have found our first complete solutions.  We save the one
-with the highest value (solution A) as the 'incumbent' solution, and
-mark the other solution as inactive.
+Here's where things get interesting.  We've reached 3 levels into our
+best sub-tree and have found our first complete solutions.  We save
+the one with the highest value (solution 3A) as the 'incumbent'
+solution, and mark the other solution as inactive.
 
 We need to find where to begin fathoming again to see if we can find a
 better solution.  So we return to depth 2 on the subtree and compare
@@ -87,7 +89,7 @@ the values of the remaining (untraversed) tree nodes to our new
 incumbent.  Our incumbent solution is 4.745, and subtree 2B has a value
 of 4.766, so we'll begin fathoming again there.
 
-Depth 3 (subtree 1C-2B)
+Depth 3 (subtree 1C->2B)
                            [Unique]
 3A [ 1.212(E3), 1.110(E2), 1.201(E1), 1.222(E4) ] = 4.745 *** complete solution ***
 3B [ 1.212(E3), 1.110(E2), 1.222(E4), 1.122(E1) ] = 4.666 *** complete solution ***
@@ -105,38 +107,43 @@ We see that 1A offers the best chance at finding a better solution than our incu
 so we begin travelling down that branch.  Essentially we do exactly what we just did on
 subtree 1C, so for brevity let's just list the path.
 
+1A
 1A->2C
-1A->2C->3AX
-1A->2C->3BX
-1A->2CX
-1A->2B->3AX
-1A->2B->3BX
-1A->2BX
-1A->2AX
-1AX
+1A->2C->3A [X]
+1A->2C->3B [X]
+1A->2C     [X]
+1A->2B->3A [X]
+1A->2B->3B [X]
+1A->2B     [X]
+1A->2A     [X]
+1A         [X]
+
+1B
 1B->2C
-1B->2C->3AX
-1B->2C->3BX
-1B->2CX
-1B->2A->3AX
-1B->2A->3BX
-1B->2AX
-1B->2BX
-1BX
-1DX
+1B->2C->3A [X]
+1B->2C->3B [X]
+1B->2C     [X]
+1B->2A->3A [X]
+1B->2A->3B [X]
+1B->2A     [X]
+1B->2B     [X]
+1B         [X]
+
+1D         [X]
 
 [ done ]
 
-So as it turns out in this simple example that there were no other values higher than the first
-incumbent.  So our best solution is:
+So as it turns out in this simple example that there were no other
+values higher than the first incumbent.  So our best solution is:
 
 3A [ 1.212(E3), 1.201(E1), 1.110(E2), 1.222(E4) ] = 4.745
 
-That's not really interesting though.  What IS interesting is that we only looked at 10
-complete solutions out of possible 24 solutions to find that best solution.  The savings add up
-quickly.  For another example included in the test cases for this scheduler, the branch-bound
-scheduler only has to revew 23 of 5040 possible solutions to find the best value!
-
+That's not really interesting though.  What IS interesting is that we
+only looked at 10 complete solutions out of possible 24 solutions to
+find that best solution.  The savings add up quickly.  For another
+example included in the test cases for this scheduler, the
+branch-bound scheduler only has to revew 23 of 5040 possible solutions
+to find the best value!
 
 == Contributing to Scheduler
  
