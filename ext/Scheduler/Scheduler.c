@@ -1,13 +1,12 @@
-// include the Ruby headers and goodies
-//
 #include "ruby.h"
 #include <stdlib.h>
 #include <stdio.h>
 
-// set to 1 to get debug prints
-//  $: << "."
+// bundle exec rake install
+// irb -rubygems
 // require 'Scheduler'
 // include Scheduler
+//
 static int debug = 1;
 
 typedef struct _node_t node_t;
@@ -39,7 +38,7 @@ struct _schedule_t {
 };
 
 static schedule_t *sched;
-static int num_expanded_solutions = 0;
+static int num_expanded_solutions;
 static solution_t *incumbent_solution;
 static float incumbent_value;
 
@@ -56,7 +55,7 @@ int prune_branch(solution_t *branch);
 int expand_branch(solution_t *root, int depth);
 int free_branch(solution_t *root);
 
-int 
+int
 fact(int n)
 {
   int result = 1;
@@ -427,35 +426,25 @@ VALUE cScheduler = Qnil;
 //
 void Init_Scheduler();
 
-// Prototype for our method 'test1' - methods are prefixed by
-// 'method_' here
-//
-VALUE method_test1(VALUE self);
-
 // schedule methods
 //
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots);
 VALUE method_schedule_free(VALUE self);
-VALUE method_schedule_add_weight(VALUE self, VALUE weights);
+VALUE method_schedule_set_weight(VALUE self, VALUE weights);
 VALUE method_schedule_compute_solution(VALUE self);
 
 // The initialization method for this module
 //
 void Init_Scheduler() {
   cScheduler = rb_define_module("Scheduler");
-  rb_define_method(cScheduler, "test1", method_test1, 0);
   rb_define_method(cScheduler, "schedule_create", method_schedule_create, 1);
   rb_define_method(cScheduler, "schedule_free", method_schedule_free, 0);
-  rb_define_method(cScheduler, "schedule_add_weight", method_schedule_add_weight, 1);
+  rb_define_method(cScheduler, "schedule_set_weight", method_schedule_set_weight, 1);
   rb_define_method(cScheduler, "schedule_compute_solution", method_schedule_compute_solution, 0);
 }
 
-VALUE method_test1(VALUE self) {
-  int x = 10;
-  return INT2NUM(fact(x));
-}
-
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
+  Check_Type(number_of_slots, T_FIXNUM);
   sched = calloc(1, sizeof(schedule_t));
   sched->num_people = 0;
   sched->num_slots = NUM2INT(number_of_slots);
@@ -464,13 +453,19 @@ VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
 
 VALUE method_schedule_free(VALUE self)
 {
-  for (int i = 0; i < sched->num_people; i++)
+  for (int i = 0; i < sched->num_people; i++) {
     free(sched->weights[i]);
+    if (debug) {
+      printf("%s: freed schedule weight %d\n",
+	     __FUNCTION__, i);
+    }
+  }
+  free(sched->weights);
   free(sched);
   return self;
 }
 
-VALUE method_schedule_add_weight(VALUE self, VALUE weights)
+VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 {
   int index = 0;
 
@@ -508,6 +503,9 @@ VALUE method_schedule_compute_solution(VALUE self)
 
   // initialize the bb proces
   //
+  num_expanded_solutions = 0;
+  incumbent_value = 0;
+  incumbent_solution = NULL;
   create_root(&root);
 
   // run the branching algorithm
@@ -521,9 +519,20 @@ VALUE method_schedule_compute_solution(VALUE self)
 	 __FUNCTION__, num_expanded_solutions, total_possible_solutions);
   printf("=================================================================\n");
 
+  // prepare the solution array of people, in order by slot
+  //
+  VALUE arr;
+  arr = rb_ary_new();
+  for (int i = 0; i < slots; i++) {
+    rb_ary_push(arr, INT2NUM(incumbent_solution->node_list[i].person_id));
+  }
+
   // cleanup
   //
   free_branch(root);
+  free(root);
 
-  return self;
+  // return the best result array
+  //
+  return arr;
 }
