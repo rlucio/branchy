@@ -1,6 +1,142 @@
 = Scheduler
 
-Description goes here.
+A basic - probably naive - implementation of a branch-and-bound based
+scheduler for pre-processed, weighted data.
+
+The best way to explain how it works is probably with a simple example.
+
+Say we want to find the 'best' schedule for four people.  We want to
+schedule them each for a one-hour time-slot.  Let's pretend we have
+pre-processed a set of scheduling options, and given each option a
+weight based on some heuristic.  Our data set (as put into the
+scheduler) looks like this:
+
+            S1      S2    S3     S4
+Entity 1 [ 1.201, 1.121, 0.222, 1.122 ]
+Entity 2 [ 1.11 , 1.2  , 1.111, 0.122 ]
+Entity 3 [ 1.212, 1.122, 0.222, 1.122 ]
+Entity 4 [ 1.222, 1.222, 1.222, 1.222 ]
+
+Where Entity is the person to be scheduled, and S is the scheduling 'slot'.
+
+After passing this information to the scheduler it can begin looking
+for the best solution.  It attempts to do this effeciently using
+branch and bound, which is a tree based search algorithm.
+
+To begin with, we must pick an initial root.  Since no values have
+been selected yet, we pick the highest value for each slot as a base,
+without concern for repeating.  Since this is the initial root, we are
+at a depth into the tree of 0.  In this case, we get:
+
+Depth 0
+
+[ 1.222(E4), 1.222(E4), 1.222(E4), 1.222(E4) ] = 4.888
+
+Now we can begin branching.  To do this we create the new leaves for
+depth 1.  Each leaf must be unique up to its depth value, meaning in
+this case that the first value (S1) must be unique.  The rest of the
+values are picked the same way as before, best in slot.
+
+Depth 1
+
+     [Unique]
+1A [ 1.201(E1), 1.222(E4), 1.222(E4), 1.222(E4) ] = 4.867
+1B [ 1.110(E2), 1.222(E4), 1.222(E4), 1.222(E4) ] = 4.776
+1C [ 1.212(E3), 1.222(E4), 1.222(E4), 1.222(E4) ] = 4.878  *** best potential path ***
+1D [ 1.222(E4), 1.200(E2), 1.111(E2), 1.122(E1) ] = 4.655
+
+Now, it is important to consider that each row is the root of a branch
+and has the HIGHEST POSSIBLE VALUE of any solution in its sub-tree.
+This fact alone allows us to be very effecient about where we look for
+new solutions.  Don't get it yet?  Just keep reading.
+
+We assume we are most likely to find a good solution in the subtree
+with the highest weight, so we continue down that branch of the tree
+first.
+
+From the best potential path, we take another step forward.  We apply
+the same technique as before, but at a depth of two we keep the value
+from depth 1 and must pick an unique value for S2 before filling in
+S3/S4 with BIS values.
+
+Depth 2 (subtree 1C)
+
+                [Unique]
+2A [ 1.212(E3), 1.201(E1), 1.222(E4), 1.222(E4) ] = 4.857  *** best potential path ***
+2B [ 1.212(E3), 1.110(E2), 1.222(E4), 1.222(E4) ] = 4.766
+2C [ 1.212(E3), 1.222(E4), 1.111(E1), 1.122(E1) ] = 4.667
+
+We are going to keep iterating on the tree, moving deeper until we
+find a valid solution -- one that has a unique entity in each slot.
+This is called 'fathoming'.
+
+Depth 3 (subtree 1C->2A)
+
+                           [Unique]
+3A [ 1.212(E3), 1.201(E1), 1.110(E2), 1.222(E4) ] = 4.745 *** complete solution ***
+3B [ 1.212(E3), 1.201(E1), 1.222(E4), 0.122(E2) ] = 3.757 *** complete solution ***
+
+Here's where things get interesting.  We've reached 3 levels into a
+sub-tree and have found our first complete solutions.  We save the one
+with the highest value (solution A) as the 'incumbent' solution, and
+mark the other solution as inactive.
+
+We need to find where to begin fathoming again to see if we can find a
+better solution.  So we return to depth 2 on the subtree and compare
+the values of the remaining (untraversed) tree nodes to our new
+incumbent.  Our incumbent solution is 4.745, and subtree 2B has a value
+of 4.766, so we'll begin fathoming again there.
+
+Depth 3 (subtree 1C-2B)
+                           [Unique]
+3A [ 1.212(E3), 1.110(E2), 1.201(E1), 1.222(E4) ] = 4.745 *** complete solution ***
+3B [ 1.212(E3), 1.110(E2), 1.222(E4), 1.122(E1) ] = 4.666 *** complete solution ***
+
+Since both options are complete we check them against our incumbent.
+Neither is greater, so again we mark these options as inactive and
+return to Depth 2.
+
+The remaining branch at depth 2 in our subtree (2C) is not larger than
+our incumbent, so we save ourselves valuable time by not bothering to
+explore that branch by marking that subtree as inactive.  With nowhere left
+to go, we return to depth 1.
+
+We see that 1A offers the best chance at finding a better solution than our incumbent,
+so we begin travelling down that branch.  Essentially we do exactly what we just did on
+subtree 1C, so for brevity let's just list the path.
+
+1A->2C
+1A->2C->3AX
+1A->2C->3BX
+1A->2CX
+1A->2B->3AX
+1A->2B->3BX
+1A->2BX
+1A->2AX
+1AX
+1B->2C
+1B->2C->3AX
+1B->2C->3BX
+1B->2CX
+1B->2A->3AX
+1B->2A->3BX
+1B->2AX
+1B->2BX
+1BX
+1DX
+
+[ done ]
+
+So as it turns out in this simple example that there were no other values higher than the first
+incumbent.  So our best solution is:
+
+3A [ 1.212(E3), 1.201(E1), 1.110(E2), 1.222(E4) ] = 4.745
+
+That's not really interesting though.  What IS interesting is that we only looked at 10
+complete solutions out of possible 24 solutions to find that best solution.  The savings add up
+quickly.  For another example included in the test cases for this scheduler, the branch-bound
+scheduler only has to revew 23 of 5040 possible solutions to find the best value!
+
 
 == Contributing to Scheduler
  

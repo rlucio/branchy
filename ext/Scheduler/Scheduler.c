@@ -70,13 +70,13 @@ print_solution(node_t *nodes, int number_of_slots)
   float w = 0.0;
 
   for(int i = 0; i < number_of_slots; i++) {
-    printf("%d => %1.2f ",
+    printf("%d => %1.3f ",
 	   nodes->person_id, nodes->weight);
     w += nodes->weight;
     nodes++;
   }
 
-  printf(" total weight: %1.2f\n", w);
+  printf(" total weight: %1.3f\n", w);
 }
 
 int
@@ -155,7 +155,7 @@ update_incumbent_and_branch(solution_t *s)
   }
 
   if (updated) {
-    printf("%s: new incumbent, weight %1.2f, at depth %d\n",
+    printf("%s: new incumbent, weight %1.3f, at depth %d\n",
 	   __FUNCTION__, incumbent_value, incumbent_solution->total_depth);
   }
 
@@ -308,7 +308,7 @@ select_branch(solution_t *branch, solution_t **new_root)
 
   if (*new_root) {
     if (debug) {
-      printf("%s: depth: %d, index: %d, weight: %1.2f\n",
+      printf("%s: depth: %d, index: %d, weight: %1.3f\n",
 	     __FUNCTION__, (*new_root)->total_depth, index, weight);
     }
     ret_val = 1;
@@ -330,7 +330,7 @@ prune_branch(solution_t *branch)
     branch->active = 0;
 
     if (debug) {
-      printf("%s: depth %d, weight %1.2f\n",
+      printf("%s: depth %d, weight %1.3f\n",
 	     __FUNCTION__, branch->total_depth, branch->total_weight);
     }
   }
@@ -354,7 +354,7 @@ expand_branch(solution_t *root, int depth)
   }
 
   if (debug) {
-    printf("%s: new depth: %d, weight %1.2f\n",
+    printf("%s: new depth: %d, weight %1.3f\n",
 	   __FUNCTION__, depth+1, root->total_weight);
   }
 
@@ -482,7 +482,7 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 
     for (int i = 0; i < sched->num_slots; i++) {
       (sched->weights)[index][i] = NUM2DBL((RARRAY_PTR(weights))[i]);
-      printf("Added weight %1.2f\n", (sched->weights)[index][i]);
+      printf("Added weight %1.3f\n", (sched->weights)[index][i]);
     }
   }
 
@@ -496,10 +496,9 @@ VALUE method_schedule_compute_solution(VALUE self)
   int people = sched->num_people;
   int slots = sched->num_slots;
 
-  // nCk = n!/((n-k)!k!)
+  // nPk = n!/(n-k)!
   //
-  int total_possible_solutions =
-    fact(people) / (fact(people - slots) * fact(slots));
+  int total_possible_solutions = fact(people) / fact(people - slots);
 
   // initialize the bb proces
   //
