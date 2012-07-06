@@ -448,7 +448,8 @@ VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
   sched = calloc(1, sizeof(schedule_t));
   sched->num_people = 0;
   sched->num_slots = NUM2INT(number_of_slots);
-  return self;
+  sched->weights = NULL;
+  return Qnil;
 }
 
 VALUE method_schedule_free(VALUE self)
@@ -457,12 +458,12 @@ VALUE method_schedule_free(VALUE self)
     free(sched->weights[i]);
     if (debug) {
       printf("%s: freed schedule weight %d\n",
-	     __FUNCTION__, i);
+             __FUNCTION__, i);
     }
   }
   free(sched->weights);
   free(sched);
-  return self;
+  return Qnil;
 }
 
 VALUE method_schedule_set_weight(VALUE self, VALUE weights)
@@ -484,9 +485,11 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
       (sched->weights)[index][i] = NUM2DBL((RARRAY_PTR(weights))[i]);
       printf("Added weight %1.3f\n", (sched->weights)[index][i]);
     }
+
+    return Qtrue;
   }
 
-  return self;
+  return Qfalse;
 }
 
 VALUE method_schedule_compute_solution(VALUE self)
