@@ -7,7 +7,7 @@
 // require 'Scheduler'
 // include Scheduler
 //
-static int debug = 1;
+static int debug = 0;
 
 typedef struct _node_t node_t;
 
@@ -37,10 +37,10 @@ struct _schedule_t {
   float **weights; // schedule weight grid
 };
 
-static schedule_t *sched;
-static int num_expanded_solutions;
-static solution_t *incumbent_solution;
-static float incumbent_value;
+static schedule_t *sched = NULL;
+static int num_expanded_solutions = 0;
+static solution_t *incumbent_solution = NULL;
+static float incumbent_value = 0.0;
 
 int fact(int n);
 void print_solution(node_t *nodes, int number_of_slots);
@@ -54,6 +54,14 @@ int select_branch(solution_t *branch, solution_t **new_root);
 int prune_branch(solution_t *branch);
 int expand_branch(solution_t *root, int depth);
 int free_branch(solution_t *root);
+
+#define safe_free(var)  \
+  do {                  \
+    if (var) {          \
+      free(var);        \
+      var = NULL;       \
+    }                   \
+  } while(0)
 
 int
 fact(int n)
@@ -104,7 +112,7 @@ solution_is_feasible(solution_t *s)
     ret_val = 1;
   }
 
-  free(map);
+  safe_free(map);
   return ret_val;
 }
 
@@ -403,9 +411,9 @@ free_branch(solution_t *root)
     i++;
   }
 
-  free(root->used_person_id_map);
-  free(root->node_list);
-  free(root->children);
+  safe_free(root->used_person_id_map);
+  safe_free(root->node_list);
+  safe_free(root->children);
 
   return 0;
 }
@@ -454,15 +462,13 @@ VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
 
 VALUE method_schedule_free(VALUE self)
 {
-  for (int i = 0; i < sched->num_people; i++) {
-    free(sched->weights[i]);
-    if (debug) {
-      printf("%s: freed schedule weight %d\n",
-             __FUNCTION__, i);
+  if (sched) {
+    for (int i = 0; i < sched->num_people; i++) {
+      safe_free(sched->weights[i]);
     }
+    safe_free(sched->weights);
+    safe_free(sched);
   }
-  free(sched->weights);
-  free(sched);
   return Qnil;
 }
 
@@ -472,7 +478,14 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 
   Check_Type(weights, T_ARRAY);
 
+  printf("%s: sched is %p\n", __FUNCTION__, sched);
+
   if (sched) {
+
+    if (RARRAY_LEN(weights) != sched->num_slots) {
+      return Qfalse;
+    }
+
     index = sched->num_people;
 
     sched->num_people += 1;
@@ -483,7 +496,9 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 
     for (int i = 0; i < sched->num_slots; i++) {
       (sched->weights)[index][i] = NUM2DBL((RARRAY_PTR(weights))[i]);
-      printf("Added weight %1.3f\n", (sched->weights)[index][i]);
+      if (debug) {
+        printf("Added weight %1.3f\n", (sched->weights)[index][i]);
+      }
     }
 
     return Qtrue;
@@ -514,12 +529,14 @@ VALUE method_schedule_compute_solution(VALUE self)
   //
   expand_branch(root, 0);
 
-  printf("=================================================================\n");
-  printf("%s: best solution is: ", __FUNCTION__);
-  print_solution(incumbent_solution->node_list, slots);
-  printf("%s: checked %d of %d total solutions\n",
-	 __FUNCTION__, num_expanded_solutions, total_possible_solutions);
-  printf("=================================================================\n");
+  if (debug) {
+    printf("=================================================================\n");
+    printf("%s: best solution is: ", __FUNCTION__);
+    print_solution(incumbent_solution->node_list, slots);
+    printf("%s: checked %d of %d total solutions\n",
+           __FUNCTION__, num_expanded_solutions, total_possible_solutions);
+    printf("=================================================================\n");
+  }
 
   // prepare the solution array of people, in order by slot
   //
@@ -532,7 +549,7 @@ VALUE method_schedule_compute_solution(VALUE self)
   // cleanup
   //
   free_branch(root);
-  free(root);
+  safe_free(root);
 
   // return the best result array
   //

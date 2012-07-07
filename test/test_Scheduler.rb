@@ -8,7 +8,49 @@ class TestScheduler < Test::Unit::TestCase
       @s.extend(Scheduler)
     end
 
-    should "give a correct solution for a small set" do
+    should "create an empty schedule with zero slots" do
+      assert_equal nil, @s.schedule_create(0)
+      @s.schedule_free()
+    end
+
+    should "not create a schedule without a fixnum" do
+      pass
+      assert_raise TypeError do
+        @s.schedule_create("foo")
+      end
+    end
+
+    should "free an uninitialized schedule" do
+      assert_equal nil, @s.schedule_free()
+    end
+
+    should "free an initialized schedule" do
+      @s.schedule_create(0)
+      assert_equal nil, @s.schedule_free()
+    end
+
+    should "fail to add a weight on an uniitialized schedule" do
+      assert_equal false, @s.schedule_set_weight([1.0, 2.0, 3.0])
+    end
+
+    #should "fail to set weights with an invalid weight set" do
+    #  @s.schedule_create(3)
+    #  assert_equal false, @s.schedule_set_weight(["foo", "bar", "baz"])
+    #  @s.schedule_free()
+    #end
+    
+    should "fail to set weights with a wrong-sized weight set" do
+      @s.schedule_create(3)
+      assert_equal false, @s.schedule_set_weight([1.0])
+    end
+
+    should "set a weight for a valid schedule" do
+      @s.schedule_create(3)
+      assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0])
+      @s.schedule_free()
+    end
+
+    should "compute a correct solution for a small set" do
       m = Matrix[
                  [ 1.201, 1.121, 0.222, 1.122 ],
                  [ 1.11 , 1.2  , 1.111, 0.122 ],
@@ -27,7 +69,7 @@ class TestScheduler < Test::Unit::TestCase
       @s.schedule_free()
     end
 
-    should "give a correct solution for a larger set" do
+    should "compute a correct solution for a larger set" do
       m = Matrix[
                  [ 1.201, 1.121, 0.222, 1.122 ],
                  [ 1.11 , 1.2  , 1.111, 0.122 ],
