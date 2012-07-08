@@ -1,0 +1,28 @@
+***************
+*** 1,4 ****
+- = Scheduler
+  
+  A basic - probably naive - implementation of a branch-and-bound based
+  scheduler for pre-processed, weighted data.
+--- 1,4 ----
++ = branchy
+  
+  A basic - probably naive - implementation of a branch-and-bound based
+  scheduler for pre-processed, weighted data.
+***************
+*** 145,151 ****
+  branch-bound scheduler only has to revew 23 of 5040 possible solutions
+  to find the best value!
+  
+- == Contributing to Scheduler
+   
+  * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been 
+  * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it.
+--- 145,151 ----
+  branch-bound scheduler only has to revew 23 of 5040 possible solutions
+  to find the best value!
+  
++ == Contributing to branchy
+   
+  * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been 
+  * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it.

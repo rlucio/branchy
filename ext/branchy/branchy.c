@@ -6,8 +6,8 @@
 
 // bundle exec rake install
 // irb -rubygems
-// require 'Scheduler'
-// include Scheduler
+// require 'branchy'
+// include branchy
 //
 static int debug = 0;
 
@@ -426,11 +426,11 @@ free_branch(solution_t *root)
 // Defining a space for information and references about the module to
 // be stored internally
 //
-VALUE cScheduler = Qnil;
+VALUE cBranchy = Qnil;
 
 // Prototype for the initialization method - Ruby calls this, not you
 //
-void Init_Scheduler();
+void Init_branchy();
 
 // schedule methods
 //
@@ -441,12 +441,12 @@ VALUE method_schedule_compute_solution(VALUE self);
 
 // The initialization method for this module
 //
-void Init_Scheduler() {
-  cScheduler = rb_define_module("Scheduler");
-  rb_define_method(cScheduler, "schedule_create", method_schedule_create, 1);
-  rb_define_method(cScheduler, "schedule_free", method_schedule_free, 0);
-  rb_define_method(cScheduler, "schedule_set_weight", method_schedule_set_weight, 1);
-  rb_define_method(cScheduler, "schedule_compute_solution", method_schedule_compute_solution, 0);
+void Init_branchy() {
+  cBranchy = rb_define_module("Branchy");
+  rb_define_method(cBranchy, "schedule_create", method_schedule_create, 1);
+  rb_define_method(cBranchy, "schedule_free", method_schedule_free, 0);
+  rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 1);
+  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 0);
 }
 
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {

@@ -1,4 +1,4 @@
-= branchy
+= Scheduler
 
 A basic - probably naive - implementation of a branch-and-bound based
 scheduler for pre-processed, weighted data.
@@ -145,7 +145,7 @@ example included in the test cases for this scheduler, the
 branch-bound scheduler only has to revew 23 of 5040 possible solutions
 to find the best value!
 
-== Contributing to branchy
+== Contributing to Scheduler
  
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet.
 * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it.

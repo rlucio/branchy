@@ -1,0 +1,217 @@
+diff --git a/Gemfile b/Gemfile
+index 45d218d..6b3ec6f 100644
+--- a/Gemfile
++++ b/Gemfile
+@@ -11,5 +11,5 @@ group :development do
+   gem "bundler", "~> 1.1.4"
+   gem "jeweler", "~> 1.8.4"
+   gem "simplecov", ">= 0"
+-  gem "Scheduler"
++  gem "branchy"
+ end
+diff --git a/Gemfile.lock b/Gemfile.lock
+index ccfb57d..9c38946 100644
+--- a/Gemfile.lock
++++ b/Gemfile.lock
+@@ -1,7 +1,7 @@
+ GEM
+   remote: http://rubygems.org/
+   specs:
+-    Scheduler (0.1.0)
++    branchy (0.1.0)
+     git (1.2.5)
+     jeweler (1.8.4)
+       bundler (~> 1.0)
+@@ -27,7 +27,7 @@ PLATFORMS
+   ruby
+ 
+ DEPENDENCIES
+-  Scheduler
++  branchy
+   bundler (~> 1.1.4)
+   jeweler (~> 1.8.4)
+   rdoc (~> 3.12)
+diff --git a/README.rdoc b/README.rdoc
+index bab1194..b8b0c4d 100644
+--- a/README.rdoc
++++ b/README.rdoc
+@@ -1,4 +1,4 @@
+-= Scheduler
++= branchy
+ 
+ A basic - probably naive - implementation of a branch-and-bound based
+ scheduler for pre-processed, weighted data.
+@@ -145,7 +145,7 @@ example included in the test cases for this scheduler, the
+ branch-bound scheduler only has to revew 23 of 5040 possible solutions
+ to find the best value!
+ 
+-== Contributing to Scheduler
++== Contributing to branchy
+  
+ * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been 
+ * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it.
+diff --git a/Rakefile b/Rakefile
+index f3bcb82..44e2033 100644
+--- a/Rakefile
++++ b/Rakefile
+@@ -14,15 +14,15 @@ require 'rake'
+ require 'jeweler'
+ Jeweler::Tasks.new do |gem|
+   # gem is a Gem::Specification... see http://docs.rubygems.org/read/chapter/20 for more options
+-  gem.name = "Scheduler"
+-  gem.homepage = "http://github.com/rlucio/Scheduler"
++  gem.name = "branchy"
++  gem.homepage = "http://github.com/rlucio/branchy"
+   gem.license = "MIT"
+   gem.summary = %Q{branch-bound scheduler}
+   gem.description = %Q{scheduler for the lasso project}
+   gem.email = "ryan.lucio@sv.cmu.edu"
+   gem.authors = ["Ryan Lucio"]
+   gem.files = Dir.glob('lib/**/*.rb') + Dir.glob('ext/**/*.{c,h,rb}')
+-  gem.extensions = ['ext/Scheduler/extconf.rb']
++  gem.extensions = ['ext/branchy/extconf.rb']
+   # dependencies defined in Gemfile
+ end
+ Jeweler::RubygemsDotOrgTasks.new
+@@ -39,7 +39,7 @@ Rake::RDocTask.new do |rdoc|
+   version = File.exist?('VERSION') ? File.read('VERSION') : ""
+ 
+   rdoc.rdoc_dir = 'rdoc'
+-  rdoc.title = "Scheduler #{version}"
++  rdoc.title = "branchy #{version}"
+   rdoc.rdoc_files.include('README*')
+   rdoc.rdoc_files.include('lib/**/*.rb')
+ end
+diff --git a/branchy.gemspec b/branchy.gemspec
+index 05e079b..aecdae0 100644
+--- a/branchy.gemspec
++++ b/branchy.gemspec
+@@ -4,7 +4,7 @@
+ # -*- encoding: utf-8 -*-
+ 
+ Gem::Specification.new do |s|
+-  s.name = "Scheduler"
++  s.name = "branchy"
+   s.version = "0.1.0"
+ 
+   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_versi
+@@ -12,17 +12,17 @@ Gem::Specification.new do |s|
+   s.date = "2012-06-30"
+   s.description = "scheduler for the lasso project"
+   s.email = "ryan.lucio@sv.cmu.edu"
+-  s.extensions = ["ext/Scheduler/extconf.rb"]
++  s.extensions = ["ext/branchy/extconf.rb"]
+   s.extra_rdoc_files = [
+     "LICENSE.txt",
+     "README.rdoc"
+   ]
+   s.files = [
+-    "ext/Scheduler/Scheduler.c",
+-    "ext/Scheduler/extconf.rb",
+-    "lib/Scheduler.rb"
++    "ext/branchy/branchy.c",
++    "ext/branchy/extconf.rb",
++    "lib/branchy.rb"
+   ]
+-  s.homepage = "http://github.com/rlucio/Scheduler"
++  s.homepage = "http://github.com/rlucio/branchy"
+   s.licenses = ["MIT"]
+   s.require_paths = ["lib"]
+   s.rubygems_version = "1.8.24"
+diff --git a/ext/branchy/branchy.c b/ext/branchy/branchy.c
+index 4cb25b0..78160b7 100644
+--- a/ext/branchy/branchy.c
++++ b/ext/branchy/branchy.c
+@@ -6,8 +6,8 @@
+ 
+ // bundle exec rake install
+ // irb -rubygems
+-// require 'Scheduler'
+-// include Scheduler
++// require 'branchy'
++// include branchy
+ //
+ static int debug = 0;
+ 
+@@ -426,11 +426,11 @@ free_branch(solution_t *root)
+ // Defining a space for information and references about the module to
+ // be stored internally
+ //
+-VALUE cScheduler = Qnil;
++VALUE cBranchy = Qnil;
+ 
+ // Prototype for the initialization method - Ruby calls this, not you
+ //
+-void Init_Scheduler();
++void Init_branchy();
+ 
+ // schedule methods
+ //
+@@ -441,12 +441,12 @@ VALUE method_schedule_compute_solution(VALUE self);
+ 
+ // The initialization method for this module
+ //
+-void Init_Scheduler() {
+-  cScheduler = rb_define_module("Scheduler");
+-  rb_define_method(cScheduler, "schedule_create", method_schedule_create, 1);
+-  rb_define_method(cScheduler, "schedule_free", method_schedule_free, 0);
+-  rb_define_method(cScheduler, "schedule_set_weight", method_schedule_set_weight, 1);
+-  rb_define_method(cScheduler, "schedule_compute_solution", method_schedule_compute_solution, 0);
++void Init_branchy() {
++  cBranchy = rb_define_module("Branchy");
++  rb_define_method(cBranchy, "schedule_create", method_schedule_create, 1);
++  rb_define_method(cBranchy, "schedule_free", method_schedule_free, 0);
++  rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 1);
++  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 0);
+ }
+ 
+ VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
+diff --git a/ext/branchy/extconf.rb b/ext/branchy/extconf.rb
+index 1f15d07..4777b52 100644
+--- a/ext/branchy/extconf.rb
++++ b/ext/branchy/extconf.rb
+@@ -1,5 +1,5 @@
+ # loads mkmf which is used to make makefiles for Ruby extensions
+ require 'mkmf'
+ 
+-create_makefile('Scheduler/Scheduler')
++create_makefile('branchy/branchy')
+ 
+diff --git a/lib/branchy.rb b/lib/branchy.rb
+index edde64d..705fd9e 100644
+--- a/lib/branchy.rb
++++ b/lib/branchy.rb
+@@ -1 +1 @@
+-require 'Scheduler/Scheduler'
++require 'branchy/branchy'
+diff --git a/test/helper.rb b/test/helper.rb
+index 824d846..fcce48b 100644
+--- a/test/helper.rb
++++ b/test/helper.rb
+@@ -12,7 +12,7 @@ require 'shoulda'
+ 
+ $LOAD_PATH.unshift(File.join(File.dirname(__FILE__), '..', 'lib'))
+ $LOAD_PATH.unshift(File.dirname(__FILE__))
+-require 'Scheduler'
++require 'branchy'
+ 
+ class Test::Unit::TestCase
+ end
+diff --git a/test/test_branchy.rb b/test/test_branchy.rb
+index e6471ae..9844d8f 100644
+--- a/test/test_branchy.rb
++++ b/test/test_branchy.rb
+@@ -1,11 +1,11 @@
+ require 'helper'
+ require 'matrix'
+ 
+-class TestScheduler < Test::Unit::TestCase
++class TestBranchy < Test::Unit::TestCase
+   context "a schedule" do
+     setup do
+       @s = Object.new
+-      @s.extend(Scheduler)
++      @s.extend(Branchy)
+     end
+ 
+     should "create an empty schedule with zero slots" do
