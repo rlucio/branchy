@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define SLOT_WEIGHT_INITIAL_VAL -1.0
+
 // bundle exec rake install
 // irb -rubygems
 // require 'Scheduler'
@@ -40,7 +42,7 @@ struct _schedule_t {
 static schedule_t *sched = NULL;
 static int num_expanded_solutions = 0;
 static solution_t *incumbent_solution = NULL;
-static float incumbent_value = 0.0;
+static float incumbent_value = SLOT_WEIGHT_INITIAL_VAL;
 
 int fact(int n);
 void print_solution(node_t *nodes, int number_of_slots);
@@ -132,14 +134,10 @@ solution_is_active(solution_t *s)
 float
 max_cost_for_slot(int slot_id, int* constraint_map, int *person_id)
 {
-  float max = 0;
+  float max = SLOT_WEIGHT_INITIAL_VAL;
+  *person_id = -1;
 
-  if (constraint_map[0] == 0) {
-    max = sched->weights[0][slot_id];
-    *person_id = 0;
-  }
-
-  for (int i = 1; i < sched->num_people; i++) {
+  for (int i = 0; i < sched->num_people; i++) {
     if ((sched->weights[i][slot_id] > max) && (constraint_map[i] == 0)) {
       max = sched->weights[i][slot_id];
       *person_id = i;
@@ -162,7 +160,7 @@ update_incumbent_and_branch(solution_t *s)
     updated = 1;
   }
 
-  if (updated) {
+  if (updated && debug) {
     printf("%s: new incumbent, weight %1.3f, at depth %d\n",
 	   __FUNCTION__, incumbent_value, incumbent_solution->total_depth);
   }
@@ -288,7 +286,7 @@ select_branch(solution_t *branch, solution_t **new_root)
 {
   int ret_val = 0;
   int index = 0;
-  float weight = 0.0;
+  float weight = SLOT_WEIGHT_INITIAL_VAL;
   solution_t *p = NULL;
 
   p = branch;
@@ -478,8 +476,6 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 
   Check_Type(weights, T_ARRAY);
 
-  printf("%s: sched is %p\n", __FUNCTION__, sched);
-
   if (sched) {
 
     if (RARRAY_LEN(weights) != sched->num_slots) {
@@ -521,7 +517,7 @@ VALUE method_schedule_compute_solution(VALUE self)
   // initialize the bb proces
   //
   num_expanded_solutions = 0;
-  incumbent_value = 0;
+  incumbent_value = SLOT_WEIGHT_INITIAL_VAL;
   incumbent_solution = NULL;
   create_root(&root);
 
