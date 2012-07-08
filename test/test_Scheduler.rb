@@ -14,7 +14,6 @@ class TestScheduler < Test::Unit::TestCase
     end
 
     should "not create a schedule without a fixnum" do
-      pass
       assert_raise TypeError do
         @s.schedule_create("foo")
       end
@@ -47,6 +46,69 @@ class TestScheduler < Test::Unit::TestCase
     should "set a weight for a valid schedule" do
       @s.schedule_create(3)
       assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0])
+      @s.schedule_free()
+    end
+
+    #should "fail to compute a solution for an empty set" do
+    #  @s.schedule_create(0)
+    #  assert_equal nil, @s.schedule_compute_solution()
+    #  @s.schedule_free()
+    #end
+
+    should "compute a valid solution for worst-case weights" do
+      m = Matrix[
+                 [ 0, 0, 0, 0 ],
+                 [ 0, 0, 0, 0 ],
+                 [ 0, 0, 0, 0 ],
+                 [ 0, 0, 0, 0 ],
+                ]
+
+      @s.schedule_create(m.column_size)
+
+      for i in 0..(m.row_size - 1) do
+        @s.schedule_set_weight(m.row(i).to_a)
+      end
+
+      assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
+
+      @s.schedule_free()
+    end
+
+    should "compute a valid solution for all equal weights" do
+      m = Matrix[
+                 [ 1, 1, 1, 1 ],
+                 [ 1, 1, 1, 1 ],
+                 [ 1, 1, 1, 1 ],
+                 [ 1, 1, 1, 1 ],
+                ]
+
+      @s.schedule_create(m.column_size)
+
+      for i in 0..(m.row_size - 1) do
+        @s.schedule_set_weight(m.row(i).to_a)
+      end
+
+      assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
+
+      @s.schedule_free()
+    end
+
+    should "compute a correct solution for a simple set" do
+      m = Matrix[
+                 [ 1, 0, 0, 0 ],
+                 [ 0, 1, 0, 0 ],
+                 [ 0, 0, 1, 0 ],
+                 [ 0, 0, 0, 1 ],
+                ]
+
+      @s.schedule_create(m.column_size)
+
+      for i in 0..(m.row_size - 1) do
+        @s.schedule_set_weight(m.row(i).to_a)
+      end
+
+      assert_equal [0, 1, 2, 3], @s.schedule_compute_solution()
+
       @s.schedule_free()
     end
 
