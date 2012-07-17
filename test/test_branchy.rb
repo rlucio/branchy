@@ -29,23 +29,23 @@ class TestBranchy < Test::Unit::TestCase
     end
 
     should "fail to add a weight on an uniitialized schedule" do
-      assert_equal false, @s.schedule_set_weight([1.0, 2.0, 3.0])
+      assert_equal false, @s.schedule_set_weight([1.0, 2.0, 3.0], [0])
     end
 
     #should "fail to set weights with an invalid weight set" do
     #  @s.schedule_create(3)
-    #  assert_equal false, @s.schedule_set_weight(["foo", "bar", "baz"])
+    #  assert_equal false, @s.schedule_set_weight(["foo", "bar", "baz"], [0])
     #  @s.schedule_free()
     #end
     
     should "fail to set weights with a wrong-sized weight set" do
       @s.schedule_create(3)
-      assert_equal false, @s.schedule_set_weight([1.0])
+      assert_equal false, @s.schedule_set_weight([1.0], [0])
     end
 
     should "set a weight for a valid schedule" do
       @s.schedule_create(3)
-      assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0])
+      assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0], [0])
       @s.schedule_free()
     end
 
@@ -66,7 +66,7 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_create(m.column_size)
 
       for i in 0..(m.row_size - 1) do
-        @s.schedule_set_weight(m.row(i).to_a)
+        @s.schedule_set_weight(m.row(i).to_a, [0])
       end
 
       assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
@@ -85,7 +85,7 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_create(m.column_size)
 
       for i in 0..(m.row_size - 1) do
-        @s.schedule_set_weight(m.row(i).to_a)
+        @s.schedule_set_weight(m.row(i).to_a, [0])
       end
 
       assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
@@ -104,7 +104,7 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_create(m.column_size)
 
       for i in 0..(m.row_size - 1) do
-        @s.schedule_set_weight(m.row(i).to_a)
+        @s.schedule_set_weight(m.row(i).to_a, [0])
       end
 
       assert_equal [0, 1, 2, 3], @s.schedule_compute_solution()
@@ -123,7 +123,7 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_create(m.column_size)
 
       for i in 0..(m.row_size - 1) do
-        @s.schedule_set_weight(m.row(i).to_a)
+        @s.schedule_set_weight(m.row(i).to_a, [0])
       end
 
       assert_equal [2, 0, 1, 3], @s.schedule_compute_solution()
@@ -148,12 +148,49 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_create(m.column_size)
 
       for i in 0..(m.row_size - 1) do
-        @s.schedule_set_weight(m.row(i).to_a)
+        @s.schedule_set_weight(m.row(i).to_a, [0])
       end
 
       assert_equal [2, 3, 4, 9], @s.schedule_compute_solution()
 
       @s.schedule_free()
     end
+
+    should "compute a correct solution for a simple set with context" do
+      # two schedule slots, with four possible entities 
+      # to schedule
+      #
+      m = Matrix[
+                 [ 1, 0 ],
+                 [ 0, 1 ], 
+                 [ 1, 0 ],
+                 [ 0, 1 ],
+                ]
+
+      # two attributes for each entity, 0=java, 1=rails, 2=engineer
+      #
+      a = Matrix[
+                 [ 0, 2 ],     # java, engineer
+                 [ 0, 1, 2 ],  # java, rails, engineer
+                 [ 1 ],        # rails
+                 [ 1 ],        # rails
+                ]
+
+      @s.schedule_create(m.column_size)
+
+      for i in 0..(m.row_size - 1) do
+        @s.schedule_set_weight(m.row(i).to_a, a.row(i).to_a)
+      end
+
+      # constraints are: 1 'java' 'engineer', 1 'rails'
+      #                  
+      @s.schedule_set_constraints(1, [0, 2])
+      @s.schedule_set_constraints(1, [1])
+
+      assert_equal [0, 1], @s.schedule_compute_solution()
+
+      @s.schedule_free()
+    end
+
   end
 end

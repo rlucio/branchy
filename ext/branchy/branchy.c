@@ -37,6 +37,7 @@ struct _schedule_t {
   int num_people;  // # of people being considered
   int num_slots;   // # of scheduling slots to be filled
   float **weights; // schedule weight grid
+  int **attribs; // attribute ids for each weights array
 };
 
 static schedule_t *sched = NULL;
@@ -436,7 +437,8 @@ void Init_branchy();
 //
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots);
 VALUE method_schedule_free(VALUE self);
-VALUE method_schedule_set_weight(VALUE self, VALUE weights);
+VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids);
+VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attributes);
 VALUE method_schedule_compute_solution(VALUE self);
 
 // The initialization method for this module
@@ -445,7 +447,8 @@ void Init_branchy() {
   cBranchy = rb_define_module("Branchy");
   rb_define_method(cBranchy, "schedule_create", method_schedule_create, 1);
   rb_define_method(cBranchy, "schedule_free", method_schedule_free, 0);
-  rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 1);
+  rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 2);
+  rb_define_method(cBranchy, "schedule_set_constraints", method_schedule_set_constraints, 2);
   rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 0);
 }
 
@@ -463,18 +466,21 @@ VALUE method_schedule_free(VALUE self)
   if (sched) {
     for (int i = 0; i < sched->num_people; i++) {
       safe_free(sched->weights[i]);
+      safe_free(sched->attribs[i]);
     }
     safe_free(sched->weights);
+    safe_free(sched->attribs);
     safe_free(sched);
   }
   return Qnil;
 }
 
-VALUE method_schedule_set_weight(VALUE self, VALUE weights)
+VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
 {
   int index = 0;
 
   Check_Type(weights, T_ARRAY);
+  Check_Type(attribute_ids, T_ARRAY);
 
   if (sched) {
 
@@ -486,6 +492,8 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
 
     sched->num_people += 1;
 
+    // add the entity's weights
+    //
     sched->weights =
       realloc(sched->weights, sched->num_people * sizeof(sched->weights));
     sched->weights[index] = calloc(sched->num_slots, sizeof(float));
@@ -497,6 +505,30 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights)
       }
     }
 
+    // add the entity's attributes
+    //
+    sched->attribs = 
+      realloc(sched->attribs, sched->num_people * sizeof(sched->attribs));
+    sched->attribs[index] = calloc(RARRAY_LEN(attribute_ids), sizeof(float));
+
+    for (int i = 0; i < RARRAY_LEN(attribute_ids); i++) {
+      (sched->attribs)[index][i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
+      if (debug) {
+        printf("Added attribute %d\n", (sched->attribs)[index][i]);
+      }
+    }
+
+    return Qtrue;
+  }
+
+  return Qfalse;
+}
+
+VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attributes)
+{
+  Check_Type(attributes, T_ARRAY);
+
+  if (sched) {
     return Qtrue;
   }
 
