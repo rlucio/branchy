@@ -1,6 +1,7 @@
 #include "ruby.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <search.h>
 
 #define SLOT_WEIGHT_INITIAL_VAL -1.0
 
@@ -31,13 +32,22 @@ struct _solution_t {
   solution_t *children;    // each solution branch may have many children.
 };
 
+typedef struct _context_t context_t;
+
+struct _context_t {
+  uint num_values; // # items in the values array
+  int *values;     // integer-based context set
+};
+
 typedef struct _schedule_t schedule_t;
 
 struct _schedule_t {
-  int num_people;  // # of people being considered
-  int num_slots;   // # of scheduling slots to be filled
-  float **weights; // schedule weight grid
-  int **attribs; // attribute ids for each weights array
+  int num_people;      // # of entities being considered
+  int num_slots;       // # of scheduling slots to be filled
+  int num_constraints; // XXX
+  float **weights;     // schedule weight grid
+  context_t **attribs; // attribute set for each entity
+  context_t **constraints; // bounding constraints
 };
 
 static schedule_t *sched = NULL;
@@ -127,6 +137,62 @@ solution_is_active(solution_t *s)
 
   while (ret_val == 0 && i < s->total_children) {
     ret_val = s->children[i++].active;
+  }
+
+  return ret_val;
+}
+
+int
+solution_validates_constraints(solution_t *s)
+{
+  int ret_val = 0;
+
+  // walk through the constraint sets
+  //
+  //for (int constraint_id = 0; i < constraints->count; i++) {
+
+    // check if each entry in the constraint set is included
+    // in the attribs for one of the entities in the solution
+    //
+    //int valid = 0;
+    //int slot_id = 0;
+    //while(slot_id < sched->num_slots && !found) {
+
+    //int entity_id = s->node_list[slot_id];
+
+      // each constraint set may have multiple entries, so
+      // check for each one
+      //
+      //found = constraints_is_valid(num_constraints, constraints->sets[i], 
+      //                             num_attribs, sched->attribs[entity_id]);
+  //}
+  //}
+
+  return ret_val;
+}
+
+int 
+compare(int *x, int *y) 
+{
+  return (*x - *y);
+}
+
+int 
+constraints_is_valid(uint num_constraints, const int *constraints, 
+                     uint num_attribs, const int *attribs) 
+{
+  int *result;
+  int ret_val = 0;
+
+  for (uint i = 0; i < num_constraints; i++) {
+    result = (int *) lfind (&(constraints[i]), &attribs, &num_attribs, sizeof(int), 
+                  (int(*) (const void *, const void *))compare);
+    if (result) {
+      ret_val = 1;
+    } else {
+      ret_val = 0;
+      break;
+    }
   }
 
   return ret_val;
@@ -466,6 +532,7 @@ VALUE method_schedule_free(VALUE self)
   if (sched) {
     for (int i = 0; i < sched->num_people; i++) {
       safe_free(sched->weights[i]);
+      safe_free(sched->attribs[i]->values);
       safe_free(sched->attribs[i]);
     }
     safe_free(sched->weights);
@@ -509,12 +576,17 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
     //
     sched->attribs = 
       realloc(sched->attribs, sched->num_people * sizeof(sched->attribs));
-    sched->attribs[index] = calloc(RARRAY_LEN(attribute_ids), sizeof(float));
+    sched->attribs[index] = calloc(1, sizeof(context_t));
+    sched->attribs[index]->values = calloc(RARRAY_LEN(attribute_ids), sizeof(uint));
+    sched->attribs[index]->num_values = (uint)RARRAY_LEN(attribute_ids);
 
-    for (int i = 0; i < RARRAY_LEN(attribute_ids); i++) {
-      (sched->attribs)[index][i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
+    uint num_attribs = sched->attribs[index]->num_values;
+    int *attribs = sched->attribs[index]->values;
+
+    for (uint i = 0; i < num_attribs; i++) {
+      attribs[i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
       if (debug) {
-        printf("Added attribute %d\n", (sched->attribs)[index][i]);
+        printf("Added attribute %d\n", attribs[i]);
       }
     }
 
@@ -524,11 +596,33 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
   return Qfalse;
 }
 
-VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attributes)
+VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attribute_ids)
 {
-  Check_Type(attributes, T_ARRAY);
+  int index = 0;
+
+  Check_Type(attribute_ids, T_ARRAY);
 
   if (sched) {
+    index = sched->num_constraints;
+
+    sched->num_constraints += 1;
+    sched->constraints =
+      realloc(sched->constraints, sched->num_constraints * sizeof(sched->constraints));
+
+    sched->constraints[index] = calloc(1, sizeof(context_t));
+    sched->constraints[index]->values = calloc(RARRAY_LEN(attribute_ids), sizeof(uint));
+    sched->constraints[index]->num_values = (uint)RARRAY_LEN(attribute_ids);
+
+    uint num_attribs = sched->constraints[index]->num_values;
+    int *attribs = sched->attribs[index]->values;
+
+    for (uint i = 0; i < num_attribs; i++) {
+      attribs[i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
+      if (debug) {
+        printf("Added attribute %d\n", attribs[i]);
+      }
+    }
+
     return Qtrue;
   }
 
