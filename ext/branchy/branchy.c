@@ -557,14 +557,16 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
 
     index = sched->num_people;
 
-    sched->num_people += 1;
-
-    // add the entity's weights
+    // add one new weights structure to the schedule to track the
+    // entity's weights
     //
+    sched->num_people += 1;
     sched->weights =
       realloc(sched->weights, sched->num_people * sizeof(sched->weights));
     sched->weights[index] = calloc(sched->num_slots, sizeof(float));
 
+    // update the schedule weights with the caller's data
+    //
     for (int i = 0; i < sched->num_slots; i++) {
       (sched->weights)[index][i] = NUM2DBL((RARRAY_PTR(weights))[i]);
       if (debug) {
@@ -572,17 +574,23 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
       }
     }
 
-    // add the entity's attributes
+    // add one new attributes structure to the schedule to track the
+    // entity's attributes
     //
     sched->attribs = 
       realloc(sched->attribs, sched->num_people * sizeof(sched->attribs));
     sched->attribs[index] = calloc(1, sizeof(context_t));
+
+    // allocate the fields inside the new attributes structure
+    //
     sched->attribs[index]->values = calloc(RARRAY_LEN(attribute_ids), sizeof(uint));
     sched->attribs[index]->num_values = (uint)RARRAY_LEN(attribute_ids);
 
     uint num_attribs = sched->attribs[index]->num_values;
     int *attribs = sched->attribs[index]->values;
 
+    // update the attribute values with the caller's data
+    //
     for (uint i = 0; i < num_attribs; i++) {
       attribs[i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
       if (debug) {
@@ -605,17 +613,24 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALU
   if (sched) {
     index = sched->num_constraints;
 
+    // add one new constraints structure to the schedule 
+    // for this new set of constraints
+    //
     sched->num_constraints += 1;
-    sched->constraints =
+    sched->constraints = 
       realloc(sched->constraints, sched->num_constraints * sizeof(sched->constraints));
-
     sched->constraints[index] = calloc(1, sizeof(context_t));
+
+    // allocate the fields inside the new constraints structure
+    //
     sched->constraints[index]->values = calloc(RARRAY_LEN(attribute_ids), sizeof(uint));
     sched->constraints[index]->num_values = (uint)RARRAY_LEN(attribute_ids);
 
     uint num_attribs = sched->constraints[index]->num_values;
     int *attribs = sched->attribs[index]->values;
 
+    // update the constraints fields with the caller's data
+    //
     for (uint i = 0; i < num_attribs; i++) {
       attribs[i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
       if (debug) {
