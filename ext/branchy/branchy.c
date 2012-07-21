@@ -91,29 +91,48 @@ fact(int n)
 int 
 compare(const int *x, const int *y) 
 {
+  printf("%s: comparing %d and %d\n", __FUNCTION__, *x, *y);
   return (*x - *y);
 }
 
 int 
 compare_contexts(const context_t *x, const context_t *y) 
 {
-  int *result;
+  int *result = NULL;
   int ret_val = 0;
+
+  printf("%s: comparing contexts\n", __FUNCTION__);
+
+  printf("constraints: ");
+  for (int i = 0; i < x->num_values; i++) {
+    printf("%2d ", x->values[i]);
+  }
+  printf("\n");
+  
+  printf("attributes: ");
+  for (int i = 0; i < y->num_values; i++) {
+    printf("%2d ", y->values[i]);
+  }
+  printf("\n");
 
   // check if each entry in the 'x' context is in the 'y' context
   //
   for (uint i = 0; i < x->num_values; i++) {
+    printf("%s: looking for value %d\n", __FUNCTION__, x->values[i]);
+
     result = (int *) lfind (&(x->values[i]), 
-                            &(y->values), &(y->num_values), sizeof(int), 
+                            y->values, &(y->num_values), sizeof(int), 
                             (int(*) (const void *, const void *))compare);
 
     if (result) {
       // if we got a non-null value then the value was found
       //
+      printf("%s: PASS compare\n", __FUNCTION__);
       ret_val = 1;
     } else {
       // if at any time we did not find a value we can give up
       //
+      printf("%s: FAIL compare\n", __FUNCTION__);
       ret_val = 0;
       break;
     }
@@ -184,6 +203,8 @@ solution_validates_constraints(const solution_t *s)
 {
   // XXX what should happen if more constraints than slots?? what if less?
 
+  printf("%s: beginning constraint set validation\n", __FUNCTION__);
+
   int ret_val = 0;
 
   int *node_list = calloc(sched->num_slots, sizeof(int));
@@ -206,7 +227,7 @@ solution_validates_constraints(const solution_t *s)
 
     while(slot_id < sched->num_slots && !found) {
 
-      int entity_id = node_list[slot_id];
+      int entity_id = node_list[slot_id++];
       if (entity_id == -1) {
         continue;
       }
@@ -224,11 +245,13 @@ solution_validates_constraints(const solution_t *s)
       //
       ret_val = 1;
       node_list[slot_id] = -1;
+      printf("%s: PASS constraint set %d\n", __FUNCTION__, i);
     } else {
       // if at any time during the check one of the constraints is not
       // matched then we can give up and fail
       //
       ret_val = 0;
+      printf("%s: FAIL constraint set %d\n", __FUNCTION__, i);
       break;
     }
   }
@@ -257,15 +280,17 @@ update_incumbent_and_branch(solution_t *s)
 {
   int updated = 0;
 
-  // update incumbent if the new solution is better
+  // update incumbent if the new solution is better, and it satisfies
+  // all constraints
   //
   if (s->total_weight > incumbent_value) {
-
-    // XXX only check for valid constraints if the weight is good (optimization)
-
-    incumbent_solution = s;
-    incumbent_value = s->total_weight;
-    updated = 1;
+    // XXXXXX
+    printf("here.\n");
+    if (solution_validates_constraints(s)) {
+      incumbent_solution = s;
+      incumbent_value = s->total_weight;
+      updated = 1;
+    }
   }
 
   if (updated && debug) {
@@ -544,9 +569,11 @@ void Init_branchy();
 //
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots);
 VALUE method_schedule_free(VALUE self);
+VALUE method_schedule_print(VALUE self);
 VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids);
-VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attributes);
+VALUE method_schedule_set_constraints(VALUE self, VALUE constraints);
 VALUE method_schedule_compute_solution(VALUE self);
+
 
 // The initialization method for this module
 //
@@ -554,8 +581,9 @@ void Init_branchy() {
   cBranchy = rb_define_module("Branchy");
   rb_define_method(cBranchy, "schedule_create", method_schedule_create, 1);
   rb_define_method(cBranchy, "schedule_free", method_schedule_free, 0);
+  rb_define_method(cBranchy, "schedule_print", method_schedule_print, 0);
   rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 2);
-  rb_define_method(cBranchy, "schedule_set_constraints", method_schedule_set_constraints, 2);
+  rb_define_method(cBranchy, "schedule_set_constraints", method_schedule_set_constraints, 1);
   rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 0);
 }
 
@@ -590,6 +618,61 @@ VALUE method_schedule_free(VALUE self)
   }
   return Qnil;
 }
+
+VALUE method_schedule_print(VALUE self)
+{
+  // Current Schedule:
+  //
+  // person  weights                      attribs
+  // ==============================================
+  // 00      1.222 1.133 2.111 0.111      1 3 5 7 9
+  // 00      1.222 1.133 2.111 0.111      1 3 5 7
+  // 00      1.222 1.133 2.111            1 
+  //
+  // constraint    values
+  // =====================
+  // 0           1 3 4 5 9
+  //
+
+  if (!sched) {
+    printf("Current schedule is empty.\n");
+    return self;
+  }
+
+  printf("Current schedule:\n\n");
+
+  printf("person  weights                      attribs\n");
+  printf("==============================================\n");
+  for (int i = 0; i < sched->num_people; i++) {
+    printf("%2d", i);
+    printf("%6s", "");
+    for (int j = 0; j < sched->num_slots; j++) {
+      printf("%1.3f ", sched->weights[i][j]);
+    }
+    printf("%6s", "");
+    for (int j = 0; j < sched->attribs[i]->num_values; j++) {
+      printf("%2d ", sched->attribs[i]->values[j]);
+    }
+    printf("\n");
+  }
+
+  printf("\n");
+
+  printf("constraint    values\n");
+  printf("======================\n");
+  for (int i = 0; i < sched->num_constraints; i++) {
+    printf("%2d", i);
+    printf("%6s", "");
+    for (int j = 0; j < sched->constraints[i]->num_values; j++) {
+      printf("%2d ", sched->constraints[i]->values[j]);
+    }
+    printf("\n");
+  }
+
+  return self;
+}
+
+
 
 VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
 {
@@ -653,11 +736,11 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
   return Qfalse;
 }
 
-VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALUE attribute_ids)
+VALUE method_schedule_set_constraints(VALUE self, VALUE constraint_ids)
 {
   int index = 0;
 
-  Check_Type(attribute_ids, T_ARRAY);
+  Check_Type(constraint_ids, T_ARRAY);
 
   if (sched) {
     index = sched->num_constraints;
@@ -672,16 +755,16 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE number_of_entities, VALU
 
     // allocate the fields inside the new constraints structure
     //
-    sched->constraints[index]->values = calloc(RARRAY_LEN(attribute_ids), sizeof(uint));
-    sched->constraints[index]->num_values = (uint)RARRAY_LEN(attribute_ids);
+    sched->constraints[index]->values = calloc(RARRAY_LEN(constraint_ids), sizeof(uint));
+    sched->constraints[index]->num_values = (uint)RARRAY_LEN(constraint_ids);
 
     uint num_attribs = sched->constraints[index]->num_values;
-    int *attribs = sched->attribs[index]->values;
+    int *attribs = sched->constraints[index]->values;
 
     // update the constraints fields with the caller's data
     //
     for (uint i = 0; i < num_attribs; i++) {
-      attribs[i] = NUM2INT((RARRAY_PTR(attribute_ids))[i]);
+      attribs[i] = NUM2INT((RARRAY_PTR(constraint_ids))[i]);
       if (debug) {
         printf("Added attribute %d\n", attribs[i]);
       }
@@ -726,10 +809,13 @@ VALUE method_schedule_compute_solution(VALUE self)
 
   // prepare the solution array of people, in order by slot
   //
-  VALUE arr;
-  arr = rb_ary_new();
-  for (int i = 0; i < slots; i++) {
-    rb_ary_push(arr, INT2NUM(incumbent_solution->node_list[i].person_id));
+  VALUE arr = Qnil;
+ 
+  if (incumbent_solution) {
+    arr = rb_ary_new();
+    for (int i = 0; i < slots; i++) {
+      rb_ary_push(arr, INT2NUM(incumbent_solution->node_list[i].person_id));
+    }
   }
 
   // cleanup
