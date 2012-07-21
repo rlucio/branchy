@@ -156,7 +156,7 @@ class TestBranchy < Test::Unit::TestCase
       @s.schedule_free()
     end
 
-    #should "compute a correct solution for a simple set with context" do
+    should "compute a correct solution for a simple set with constraints" do
       # two schedule slots, with four possible entities 
       # to schedule
       #
@@ -172,20 +172,20 @@ class TestBranchy < Test::Unit::TestCase
       #  entity 2 [ 1 ],        # rails
       #  entity 3 [ 1 ],        # rails
 
-      #@s.schedule_set_weight([1.0,0.0], [0,2])
-      #@s.schedule_set_weight([0.0,1.0], [0,1,2])
-      #@s.schedule_set_weight([1.0,0.0], [1])
-      #@s.schedule_set_weight([0.0,1.0], [1])
+      @s.schedule_set_weight([1.0,0.0], [0,2])
+      @s.schedule_set_weight([0.0,1.0], [0,1,2])
+      @s.schedule_set_weight([1.0,0.0], [1])
+      @s.schedule_set_weight([0.0,1.0], [1])
 
       # constraints are: 1 'java' 'engineer', 1 'rails'
       #                  
-      #@s.schedule_set_constraints(1, [0, 2])
-      #@s.schedule_set_constraints(1, [1])
+      @s.schedule_set_constraints(1, [0, 2])
+      @s.schedule_set_constraints(1, [1])
 
       #assert_equal [0, 1], @s.schedule_compute_solution()
 
-      #@s.schedule_free()
-    #end
+      @s.schedule_free()
+    end
 
   end
 end

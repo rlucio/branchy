@@ -56,9 +56,12 @@ static solution_t *incumbent_solution = NULL;
 static float incumbent_value = SLOT_WEIGHT_INITIAL_VAL;
 
 int fact(int n);
-void print_solution(node_t *nodes, int number_of_slots);
-int solution_is_feasible(solution_t *s);
-int solution_is_active(solution_t *s);
+int compare(const int *x, const int *y);
+int compare_contexts(const context_t *x, const context_t *y);
+void print_solution(const node_t *nodes, int number_of_slots);
+int solution_is_feasible(const solution_t *s);
+int solution_is_active(const solution_t *s);
+int solution_validates_constraints(const solution_t *s);
 float max_cost_for_slot(int slot_id, int* constraint_map, int *person_id);
 void update_incumbent_and_branch(solution_t *s);
 int create_root(solution_t **root);
@@ -85,8 +88,42 @@ fact(int n)
   return result;
 }
 
+int 
+compare(const int *x, const int *y) 
+{
+  return (*x - *y);
+}
+
+int 
+compare_contexts(const context_t *x, const context_t *y) 
+{
+  int *result;
+  int ret_val = 0;
+
+  // check if each entry in the 'x' context is in the 'y' context
+  //
+  for (uint i = 0; i < x->num_values; i++) {
+    result = (int *) lfind (&(x->values[i]), 
+                            &(y->values), &(y->num_values), sizeof(int), 
+                            (int(*) (const void *, const void *))compare);
+
+    if (result) {
+      // if we got a non-null value then the value was found
+      //
+      ret_val = 1;
+    } else {
+      // if at any time we did not find a value we can give up
+      //
+      ret_val = 0;
+      break;
+    }
+  }
+
+  return ret_val;
+}
+
 void
-print_solution(node_t *nodes, int number_of_slots)
+print_solution(const node_t *nodes, int number_of_slots)
 {
   float w = 0.0;
 
@@ -101,7 +138,7 @@ print_solution(node_t *nodes, int number_of_slots)
 }
 
 int
-solution_is_feasible(solution_t *s)
+solution_is_feasible(const solution_t *s)
 {
   int p = 0;
   int count = 0;
@@ -130,7 +167,7 @@ solution_is_feasible(solution_t *s)
 }
 
 int
-solution_is_active(solution_t *s)
+solution_is_active(const solution_t *s)
 {
   int i = 0;
   int ret_val = 0;
@@ -143,53 +180,54 @@ solution_is_active(solution_t *s)
 }
 
 int
-solution_validates_constraints(solution_t *s)
+solution_validates_constraints(const solution_t *s)
 {
+  // XXX what should happen if more constraints than slots?? what if less?
+
   int ret_val = 0;
+
+  int *node_list = calloc(sched->num_slots, sizeof(int));
+  for (int i = 0; i < sched->num_slots; i++) {
+    node_list[i] = s->node_list[i].person_id;
+  }
 
   // walk through the constraint sets
   //
-  //for (int constraint_id = 0; i < constraints->count; i++) {
+  for (int i = 0; i < sched->num_constraints; i++) {
 
-    // check if each entry in the constraint set is included
-    // in the attribs for one of the entities in the solution
+    // check if each constraint set is included in the attribs for 
+    // one unique entity in the solution.  'unique' meaning that the
+    // entity has not already been mapped to a constraint set.
     //
-    //int valid = 0;
-    //int slot_id = 0;
-    //while(slot_id < sched->num_slots && !found) {
+    context_t *constraint_set = sched->constraints[i];
 
-    //int entity_id = s->node_list[slot_id];
+    int found = 0;
+    int slot_id = 0;
+
+    while(slot_id < sched->num_slots && !found) {
+
+      int entity_id = node_list[slot_id];
+      if (entity_id == -1) {
+        continue;
+      }
+
+      context_t *attributes_set = sched->attribs[entity_id];
 
       // each constraint set may have multiple entries, so
       // check for each one
       //
-      //found = constraints_is_valid(num_constraints, constraints->sets[i], 
-      //                             num_attribs, sched->attribs[entity_id]);
-  //}
-  //}
+      found = compare_contexts(constraint_set, attributes_set);
+    }
 
-  return ret_val;
-}
-
-int 
-compare(int *x, int *y) 
-{
-  return (*x - *y);
-}
-
-int 
-constraints_is_valid(uint num_constraints, const int *constraints, 
-                     uint num_attribs, const int *attribs) 
-{
-  int *result;
-  int ret_val = 0;
-
-  for (uint i = 0; i < num_constraints; i++) {
-    result = (int *) lfind (&(constraints[i]), &attribs, &num_attribs, sizeof(int), 
-                  (int(*) (const void *, const void *))compare);
-    if (result) {
+    if (found) { 
+      // mark the solution slot as found so we don't consider it again
+      //
       ret_val = 1;
+      node_list[slot_id] = -1;
     } else {
+      // if at any time during the check one of the constraints is not
+      // matched then we can give up and fail
+      //
       ret_val = 0;
       break;
     }
@@ -222,6 +260,9 @@ update_incumbent_and_branch(solution_t *s)
   // update incumbent if the new solution is better
   //
   if (s->total_weight > incumbent_value) {
+
+    // XXX only check for valid constraints if the weight is good (optimization)
+
     incumbent_solution = s;
     incumbent_value = s->total_weight;
     updated = 1;
@@ -535,8 +576,16 @@ VALUE method_schedule_free(VALUE self)
       safe_free(sched->attribs[i]->values);
       safe_free(sched->attribs[i]);
     }
+    
+    for (int i = 0; i < sched->num_constraints; i++) {
+      safe_free(sched->constraints[i]->values);
+      safe_free(sched->constraints[i]);
+    }
+
     safe_free(sched->weights);
     safe_free(sched->attribs);
+    safe_free(sched->constraints);
+
     safe_free(sched);
   }
   return Qnil;
