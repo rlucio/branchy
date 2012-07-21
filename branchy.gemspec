@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "branchy"
-  s.version = "0.1.1"
+  s.version = "0.2.0"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Ryan Lucio"]
-  s.date = "2012-07-10"
+  s.date = "2012-07-21"
   s.description = "scheduler for the lasso project"
   s.email = "ryan.lucio@sv.cmu.edu"
   s.extensions = ["ext/branchy/extconf.rb"]
@@ -38,14 +38,12 @@ Gem::Specification.new do |s|
       s.add_development_dependency(%q<bundler>, ["~> 1.1.4"])
       s.add_development_dependency(%q<jeweler>, ["~> 1.8.4"])
       s.add_development_dependency(%q<simplecov>, [">= 0"])
-      s.add_development_dependency(%q<branchy>, [">= 0"])
     else
       s.add_dependency(%q<shoulda>, [">= 0"])
       s.add_dependency(%q<rdoc>, ["~> 3.12"])
       s.add_dependency(%q<bundler>, ["~> 1.1.4"])
       s.add_dependency(%q<jeweler>, ["~> 1.8.4"])
       s.add_dependency(%q<simplecov>, [">= 0"])
-      s.add_dependency(%q<branchy>, [">= 0"])
     end
   else
     s.add_dependency(%q<shoulda>, [">= 0"])
@@ -53,7 +51,6 @@ Gem::Specification.new do |s|
     s.add_dependency(%q<bundler>, ["~> 1.1.4"])
     s.add_dependency(%q<jeweler>, ["~> 1.8.4"])
     s.add_dependency(%q<simplecov>, [">= 0"])
-    s.add_dependency(%q<branchy>, [">= 0"])
   end
 end
 
