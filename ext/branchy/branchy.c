@@ -91,7 +91,6 @@ fact(int n)
 int 
 compare(const int *x, const int *y) 
 {
-  printf("%s: comparing %d and %d\n", __FUNCTION__, *x, *y);
   return (*x - *y);
 }
 
@@ -118,8 +117,6 @@ compare_contexts(const context_t *x, const context_t *y)
   // check if each entry in the 'x' context is in the 'y' context
   //
   for (uint i = 0; i < x->num_values; i++) {
-    printf("%s: looking for value %d\n", __FUNCTION__, x->values[i]);
-
     result = (int *) lfind (&(x->values[i]), 
                             y->values, &(y->num_values), sizeof(int), 
                             (int(*) (const void *, const void *))compare);
@@ -283,14 +280,10 @@ update_incumbent_and_branch(solution_t *s)
   // update incumbent if the new solution is better, and it satisfies
   // all constraints
   //
-  if (s->total_weight > incumbent_value) {
-    // XXXXXX
-    printf("here.\n");
-    if (solution_validates_constraints(s)) {
+  if (s->total_weight > incumbent_value && solution_validates_constraints(s)) {
       incumbent_solution = s;
       incumbent_value = s->total_weight;
       updated = 1;
-    }
   }
 
   if (updated && debug) {
