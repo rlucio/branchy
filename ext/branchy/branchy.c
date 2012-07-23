@@ -584,6 +584,7 @@ VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
   Check_Type(number_of_slots, T_FIXNUM);
   sched = calloc(1, sizeof(schedule_t));
   sched->num_people = 0;
+  sched->num_constraints = 0;
   sched->num_slots = NUM2INT(number_of_slots);
   sched->weights = NULL;
   return Qnil;
@@ -676,7 +677,9 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
 
   if (sched) {
 
-    if (RARRAY_LEN(weights) != sched->num_slots) {
+    if (RARRAY_LEN(weights) != sched->num_slots ||
+        RARRAY_LEN(weights) == 0 ||
+        RARRAY_LEN(attribute_ids) == 0) {
       return Qfalse;
     }
 
@@ -736,6 +739,10 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE constraint_ids)
   Check_Type(constraint_ids, T_ARRAY);
 
   if (sched) {
+    if (RARRAY_LEN(constraint_ids) == 0) {
+      return Qfalse;
+    }
+
     index = sched->num_constraints;
 
     // add one new constraints structure to the schedule 

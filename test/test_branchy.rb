@@ -27,9 +27,31 @@ class TestBranchy < Test::Unit::TestCase
         assert_equal false, @s.schedule_set_weight([1.0, 2.0, 3.0], [0])
       end
 
-      should "set a weight for a valid schedule" do
+      should "not add a constraint for an uninitialized schedule" do
+        assert_equal false, @s.schedule_set_constraints([0])
+      end
+
+      should "set a single weight for a simple schedule" do
+        @s.schedule_create(1)
+        assert_equal true, @s.schedule_set_weight([1.0], [0])
+        @s.schedule_free()
+      end
+
+      should "set a single weight for a bigger schedule" do
         @s.schedule_create(3)
-        assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0], [0])
+        assert_equal true, @s.schedule_set_weight([1.0, 2.0, 3.0], [0, 1, 2])
+        @s.schedule_free()
+      end
+
+      should "set a single constraint for a simple schedule" do
+        @s.schedule_create(1)
+        assert_equal true, @s.schedule_set_constraints([0])
+        @s.schedule_free()
+      end
+
+      should "set a single constraint set for a bigger schedule" do
+        @s.schedule_create(3)
+        assert_equal true, @s.schedule_set_constraints([0, 2, 5])
         @s.schedule_free()
       end
     end
@@ -41,17 +63,53 @@ class TestBranchy < Test::Unit::TestCase
         end
       end
 
-      should "not set weights with a wrong-sized weight set" do
+      should "not set a single weight with a wrong-sized weight set" do
         @s.schedule_create(3)
         assert_equal false, @s.schedule_set_weight([1.0], [0])
         @s.schedule_free()
       end
 
-      #should "fail to set weights with an invalid weight set" do
-      #  @s.schedule_create(3)
-      #  assert_equal false, @s.schedule_set_weight(["foo", "bar", "baz"], [0])
+      should "not set a single weight with an empty weight set" do
+        @s.schedule_create(3)
+        assert_equal false, @s.schedule_set_weight([], [0])
+        @s.schedule_free()
+      end
+
+      should "not set a single weight with an empty attribute set" do
+        @s.schedule_create(1)
+        assert_equal false, @s.schedule_set_weight([1.0], [])
+        @s.schedule_free()
+      end
+
+      should "not set a single constraint with an empty constraint set" do
+        @s.schedule_create(1)
+        assert_equal false, @s.schedule_set_constraints([])
+        @s.schedule_free()
+      end
+
+      #should "not set a single weight with an invalid weight set" do
+      #  @s.schedule_create(1)
+      #  assert_raise TypeError do
+      #    @s.schedule_set_weight(["foo"], [0])
+      #  end
       #  @s.schedule_free()
       #end
+
+      should "not set a single weight with an invalid attribute set" do
+        @s.schedule_create(1)
+        assert_raise TypeError do
+          @s.schedule_set_weight([1.0], ["foo"])
+        end
+        @s.schedule_free()
+      end
+
+      should "not set a single constraint with an invalid constraint set" do
+        @s.schedule_create(1)
+        assert_raise TypeError do
+          @s.schedule_set_constraints(["foo"])
+        end
+        @s.schedule_free()
+      end
     end
   end
 
@@ -87,7 +145,6 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
 
@@ -110,7 +167,6 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
 
@@ -133,7 +189,6 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal [0, 1, 2, 3], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
 
@@ -156,7 +211,6 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal [2, 0, 1, 3], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
 
@@ -186,7 +240,6 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal [2, 3, 4, 9], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
 
@@ -220,7 +273,6 @@ class TestBranchy < Test::Unit::TestCase
         @s.schedule_print()
 
         assert_equal [2, 1], @s.schedule_compute_solution()
-
         @s.schedule_free()
       end
     end
