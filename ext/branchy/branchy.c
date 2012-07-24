@@ -44,7 +44,7 @@ typedef struct _schedule_t schedule_t;
 struct _schedule_t {
   int num_people;      // # of entities being considered
   int num_slots;       // # of scheduling slots to be filled
-  int num_constraints; // XXX
+  int num_constraints; // # of scheduling constraints
   float **weights;     // schedule weight grid
   context_t **attribs; // attribute set for each entity
   context_t **constraints; // bounding constraints
@@ -100,20 +100,6 @@ compare_contexts(const context_t *x, const context_t *y)
   int *result = NULL;
   int ret_val = 0;
 
-  printf("%s: comparing contexts\n", __FUNCTION__);
-
-  printf("constraints: ");
-  for (int i = 0; i < x->num_values; i++) {
-    printf("%2d ", x->values[i]);
-  }
-  printf("\n");
-  
-  printf("attributes: ");
-  for (int i = 0; i < y->num_values; i++) {
-    printf("%2d ", y->values[i]);
-  }
-  printf("\n");
-
   // check if each entry in the 'x' context is in the 'y' context
   //
   for (uint i = 0; i < x->num_values; i++) {
@@ -124,12 +110,10 @@ compare_contexts(const context_t *x, const context_t *y)
     if (result) {
       // if we got a non-null value then the value was found
       //
-      printf("%s: PASS compare\n", __FUNCTION__);
       ret_val = 1;
     } else {
       // if at any time we did not find a value we can give up
       //
-      printf("%s: FAIL compare\n", __FUNCTION__);
       ret_val = 0;
       break;
     }
@@ -198,11 +182,7 @@ solution_is_active(const solution_t *s)
 int
 solution_validates_constraints(const solution_t *s)
 {
-  // XXX what should happen if more constraints than slots?? what if less?
-
-  printf("%s: beginning constraint set validation\n", __FUNCTION__);
-
-  int ret_val = 0;
+  int ret_val = 1;
 
   int *node_list = calloc(sched->num_slots, sizeof(int));
   for (int i = 0; i < sched->num_slots; i++) {
@@ -242,13 +222,17 @@ solution_validates_constraints(const solution_t *s)
       //
       ret_val = 1;
       node_list[slot_id] = -1;
-      printf("%s: PASS constraint set %d\n", __FUNCTION__, i);
+      if (debug) {
+        printf("%s: PASS constraint set %d\n", __FUNCTION__, i);
+      }
     } else {
       // if at any time during the check one of the constraints is not
       // matched then we can give up and fail
       //
       ret_val = 0;
-      printf("%s: FAIL constraint set %d\n", __FUNCTION__, i);
+      if (debug) {
+        printf("%s: FAIL constraint set %d\n", __FUNCTION__, i);
+      }
       break;
     }
   }

@@ -113,7 +113,7 @@ class TestBranchy < Test::Unit::TestCase
     end
   end
 
-  context "compute optimal solutions" do
+  context "compute solutions" do
     setup do
       @s = Object.new
       @s.extend(Branchy)
@@ -144,6 +144,7 @@ class TestBranchy < Test::Unit::TestCase
           @s.schedule_set_constraints([0])
         end
 
+        @s.schedule_print()
         assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
         @s.schedule_free()
       end
@@ -166,6 +167,7 @@ class TestBranchy < Test::Unit::TestCase
           @s.schedule_set_constraints([0])
         end
 
+        @s.schedule_print()
         assert_equal [0, 2, 1, 3], @s.schedule_compute_solution()
         @s.schedule_free()
       end
@@ -188,7 +190,31 @@ class TestBranchy < Test::Unit::TestCase
           @s.schedule_set_constraints([0])
         end
 
+        @s.schedule_print()
         assert_equal [0, 1, 2, 3], @s.schedule_compute_solution()
+        @s.schedule_free()
+      end
+
+      should "return nil solution if schedule constraints cannot be satisfied" do
+        m = Matrix[
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ],
+        ]
+
+        @s.schedule_create(m.column_size)
+
+        for i in 0..(m.row_size - 1) do
+          @s.schedule_set_weight(m.row(i).to_a, [0])
+        end
+
+        for i in 0..(m.column_size - 1) do
+          @s.schedule_set_constraints([5])
+        end
+
+        @s.schedule_print()
+        assert_equal nil, @s.schedule_compute_solution()
         @s.schedule_free()
       end
 
@@ -210,6 +236,7 @@ class TestBranchy < Test::Unit::TestCase
           @s.schedule_set_constraints([0])
         end
 
+        @s.schedule_print()
         assert_equal [2, 0, 1, 3], @s.schedule_compute_solution()
         @s.schedule_free()
       end
@@ -232,14 +259,34 @@ class TestBranchy < Test::Unit::TestCase
 
         for i in 0..(m.row_size - 1) do
           @s.schedule_set_weight(m.row(i).to_a, [0])
-          @s.schedule_set_constraints([0])
         end
 
         for i in 0..(m.column_size - 1) do
           @s.schedule_set_constraints([0])
         end
 
+        @s.schedule_print()
         assert_equal [2, 3, 4, 9], @s.schedule_compute_solution()
+        @s.schedule_free()
+      end
+
+
+      should "compute a correct solution for a simple set with no constraints" do
+        m = Matrix[
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ],
+        ]
+
+        @s.schedule_create(m.column_size)
+
+        for i in 0..(m.row_size - 1) do
+          @s.schedule_set_weight(m.row(i).to_a, [0])
+        end
+
+        @s.schedule_print()
+        assert_equal [0, 1, 2, 3], @s.schedule_compute_solution()
         @s.schedule_free()
       end
 
@@ -250,16 +297,15 @@ class TestBranchy < Test::Unit::TestCase
         #  entity 1 [ 0.0, 1.0 ],
         #  entity 2 [ 1.0, 0.0 ],
         #  entity 3 [ 0.0, 1.0 ],
-
+        #
         # attributes set for each entity, 0=java, 1=rails, 2=engineer
         #
         #  entity 0 [ 0, 2 ],     # java, engineer
         #  entity 1 [ 0, 1, 2 ],  # java, rails, engineer
         #  entity 2 [ 1 ],        # rails
         #  entity 3 [ 1 ],        # rails
-
+        #
         @s.schedule_create(2)
-
         @s.schedule_set_weight([1.0,0.0], [0,2])
         @s.schedule_set_weight([0.0,1.0], [0,1,2])
         @s.schedule_set_weight([1.0,0.0], [1])
@@ -273,6 +319,27 @@ class TestBranchy < Test::Unit::TestCase
         @s.schedule_print()
 
         assert_equal [2, 1], @s.schedule_compute_solution()
+        @s.schedule_free()
+      end
+    end
+
+    context "with invalid params" do
+      should "return a nil solution when given too few weights to fill a schedule" do
+        m = Matrix[
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ],
+        ]
+
+        @s.schedule_create(m.column_size)
+        @s.schedule_set_weight(m.row(0).to_a, [0])
+
+        for i in 0..(m.column_size - 1) do
+          @s.schedule_set_constraints([0])
+        end
+
+        assert_equal nil, @s.schedule_compute_solution()
         @s.schedule_free()
       end
     end
