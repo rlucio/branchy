@@ -52,8 +52,9 @@ struct _schedule_t {
 
 static schedule_t *sched = NULL;
 static int num_expanded_solutions = 0;
-static solution_t *incumbent_solution = NULL;
-static float incumbent_value = SLOT_WEIGHT_INITIAL_VAL;
+static int num_requested_solutions = 0;
+static solution_t *incumbent_set = NULL;
+static int incumbent_count = 0;
 
 int fact(int n);
 int compare(const int *x, const int *y);
@@ -63,7 +64,8 @@ int solution_is_feasible(const solution_t *s);
 int solution_is_active(const solution_t *s);
 int solution_validates_constraints(const solution_t *s);
 float max_cost_for_slot(int slot_id, int* constraint_map, int *person_id);
-void update_incumbent_and_branch(solution_t *s);
+float incumbent_get_last_weight(void);
+void incumbent_update_and_prune(solution_t *s);
 int create_root(solution_t **root);
 int create_branch(solution_t *root, int depth);
 int select_branch(solution_t *branch, solution_t **new_root);
@@ -256,23 +258,54 @@ max_cost_for_slot(int slot_id, int* constraint_map, int *person_id)
   return max;
 }
 
+float 
+incumbent_get_last_weight() {
+  // return the weight for the last element in the incumbent 
+  // solution array (the array is ordered from best to worst)
+  //
+  return incumbent_set[num_requested_solutions - 1].total_weight;
+}
+
 void
-update_incumbent_and_branch(solution_t *s)
+incumbent_update_and_prune(solution_t *s)
 {
   int updated = 0;
+  int index = 0;
 
   // update incumbent if the new solution is better, and it satisfies
   // all constraints
   //
-  if (s->total_weight > incumbent_value && solution_validates_constraints(s)) {
-      incumbent_solution = s;
-      incumbent_value = s->total_weight;
+  while (!updated && 
+         index < num_requested_solutions) {
+
+    printf("s->total_weight=%f, incumbent_set[index].total_weight=%f\n",
+           s->total_weight, incumbent_set[index].total_weight);
+
+    if (s->total_weight > incumbent_set[index].total_weight && 
+        solution_validates_constraints(s)) {
+
+      printf("set incumbent at %d\n", index);
+
+      if (incumbent_count != 0) {
+        for (int i = incumbent_count-1; i > index; i--) {
+          incumbent_set[i] = incumbent_set[i-1];
+        }
+      }
+
+      if (incumbent_count < num_requested_solutions) {
+        incumbent_count++;
+      }
+
+      incumbent_set[index] = *s;
       updated = 1;
+    }
+
+    index++;
   }
 
   if (updated && debug) {
     printf("%s: new incumbent, weight %1.3f, at depth %d\n",
-	   __FUNCTION__, incumbent_value, incumbent_solution->total_depth);
+	   __FUNCTION__, incumbent_set[index].total_weight, incumbent_set[index].total_depth);
   }
 
   // we are done with this branch
@@ -377,7 +410,7 @@ create_branch(solution_t *root, int depth)
     // don't even bother with this solution if we already know it cannot
     // produce a better result
     //
-    if (s->total_weight < incumbent_value) {
+    if (s->total_weight < incumbent_get_last_weight()) {
       s->active = 0;
     }
 
@@ -414,7 +447,7 @@ select_branch(solution_t *branch, solution_t **new_root)
     for (int i = 0; i < p->total_children; i++) {
       if (p->children[i].active == 1 &&
 	  p->children[i].total_weight > weight &&
-	  p->children[i].total_weight > incumbent_value) {
+	  p->children[i].total_weight > incumbent_get_last_weight()) {
 	weight = p->children[i].total_weight;
 	index = i;
 	*new_root = &(p->children[index]);
@@ -486,7 +519,7 @@ expand_branch(solution_t *root, int depth)
     }
 
     if (solution_is_feasible(new_root)) {
-      update_incumbent_and_branch(new_root);
+      incumbent_update_and_prune(new_root);
     }
 
     if (new_root->active) {
@@ -549,7 +582,7 @@ VALUE method_schedule_free(VALUE self);
 VALUE method_schedule_print(VALUE self);
 VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids);
 VALUE method_schedule_set_constraints(VALUE self, VALUE constraints);
-VALUE method_schedule_compute_solution(VALUE self);
+VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_find);
 
 
 // The initialization method for this module
@@ -561,7 +594,7 @@ void Init_branchy() {
   rb_define_method(cBranchy, "schedule_print", method_schedule_print, 0);
   rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 2);
   rb_define_method(cBranchy, "schedule_set_constraints", method_schedule_set_constraints, 1);
-  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 0);
+  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 1);
 }
 
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
@@ -760,12 +793,14 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE constraint_ids)
   return Qfalse;
 }
 
-VALUE method_schedule_compute_solution(VALUE self)
+VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_find)
 {
   solution_t *root = NULL;
 
   int people = sched->num_people;
   int slots = sched->num_slots;
+
+  VALUE hash = Qnil;
 
   // nPk = n!/(n-k)!
   //
@@ -774,8 +809,9 @@ VALUE method_schedule_compute_solution(VALUE self)
   // initialize the bb proces
   //
   num_expanded_solutions = 0;
-  incumbent_value = SLOT_WEIGHT_INITIAL_VAL;
-  incumbent_solution = NULL;
+  num_requested_solutions = NUM2INT(number_of_solutions_to_find);
+  incumbent_set = calloc(num_requested_solutions, sizeof(solution_t));
+  incumbent_count = 0;
   create_root(&root);
 
   // run the branching algorithm
@@ -783,31 +819,37 @@ VALUE method_schedule_compute_solution(VALUE self)
   expand_branch(root, 0);
 
   if (debug) {
-    printf("=================================================================\n");
-    printf("%s: best solution is: ", __FUNCTION__);
-    print_solution(incumbent_solution->node_list, slots);
     printf("%s: checked %d of %d total solutions\n",
            __FUNCTION__, num_expanded_solutions, total_possible_solutions);
-    printf("=================================================================\n");
   }
 
-  // prepare the solution array of people, in order by slot
+  if (incumbent_count == 0) {
+    printf("%s: no solutions found\n", __FUNCTION__);
+    goto bail;
+  }
+  
+  hash = rb_hash_new();
+  
+  // build a hash containing the solution sets
   //
-  VALUE arr = Qnil;
- 
-  if (incumbent_solution) {
-    arr = rb_ary_new();
-    for (int i = 0; i < slots; i++) {
-      rb_ary_push(arr, INT2NUM(incumbent_solution->node_list[i].person_id));
+  int i = 0;
+  while(i < incumbent_count && i < num_requested_solutions) {
+
+    printf("%s: solution set %d: ", __FUNCTION__, i);
+    print_solution(incumbent_set[i].node_list, slots);
+
+    VALUE arr = rb_ary_new();
+
+    for (int j = 0; j < slots; j++) {
+      rb_ary_push(arr, INT2NUM(incumbent_set[i].node_list[j].person_id));
     }
+
+    rb_hash_aset(hash, INT2NUM(i++), arr);
   }
 
-  // cleanup
-  //
+ bail:
   free_branch(root);
   safe_free(root);
-
-  // return the best result array
-  //
-  return arr;
+  safe_free(incumbent_set);
+  return hash;
 }
