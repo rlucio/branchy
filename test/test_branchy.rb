@@ -126,7 +126,7 @@ class TestBranchy < Test::Unit::TestCase
         @s.schedule_free()
       end
 
-      should "compute a valid solution for worst-case weights" do
+      should "compute a nil solution for worst-case weights" do
         m = Matrix[
             [ 0, 0, 0, 0 ],
             [ 0, 0, 0, 0 ],
@@ -145,7 +145,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[0, 2, 1, 3]}, @s.schedule_compute_solution(1))
+        assert_equal nil, @s.schedule_compute_solution(1)
         @s.schedule_free()
       end
 
@@ -369,6 +369,48 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_equal nil, @s.schedule_compute_solution(1)
+        @s.schedule_free()
+      end
+
+      should "return a range error when requesting a negative solution count" do
+        m = Matrix[
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ],
+        ]
+
+        @s.schedule_create(m.column_size)
+        @s.schedule_set_weight(m.row(0).to_a, [0])
+
+        for i in 0..(m.column_size - 1) do
+          @s.schedule_set_constraints([0])
+        end
+
+        assert_raise RangeError do
+          @s.schedule_compute_solution(-1)
+        end
+        @s.schedule_free()
+      end
+
+      should "return a type error when requesting an invalid solution count" do
+        m = Matrix[
+            [ 1, 0, 0, 0 ],
+            [ 0, 1, 0, 0 ],
+            [ 0, 0, 1, 0 ],
+            [ 0, 0, 0, 1 ],
+        ]
+
+        @s.schedule_create(m.column_size)
+        @s.schedule_set_weight(m.row(0).to_a, [0])
+
+        for i in 0..(m.column_size - 1) do
+          @s.schedule_set_constraints([0])
+        end
+
+        assert_raise TypeError do
+          @s.schedule_compute_solution("foo")
+        end
         @s.schedule_free()
       end
     end

@@ -3,6 +3,12 @@
 #include <stdio.h>
 #include <search.h>
 
+// TODO: fix all int/uint conversion issues with counters
+// TODO: optimize logging for log levels
+// TODO: have function to enable/disable logging at runtime
+// TODO: general cleanup
+//
+
 #define SLOT_WEIGHT_INITIAL_VAL -1.0
 
 // bundle exec rake install
@@ -90,14 +96,14 @@ fact(int n)
   return result;
 }
 
-int 
-compare(const int *x, const int *y) 
+int
+compare(const int *x, const int *y)
 {
   return (*x - *y);
 }
 
-int 
-compare_contexts(const context_t *x, const context_t *y) 
+int
+compare_contexts(const context_t *x, const context_t *y)
 {
   int *result = NULL;
   int ret_val = 0;
@@ -105,8 +111,8 @@ compare_contexts(const context_t *x, const context_t *y)
   // check if each entry in the 'x' context is in the 'y' context
   //
   for (uint i = 0; i < x->num_values; i++) {
-    result = (int *) lfind (&(x->values[i]), 
-                            y->values, &(y->num_values), sizeof(int), 
+    result = (int *) lfind (&(x->values[i]),
+                            y->values, &(y->num_values), sizeof(int),
                             (int(*) (const void *, const void *))compare);
 
     if (result) {
@@ -195,7 +201,7 @@ solution_validates_constraints(const solution_t *s)
   //
   for (int i = 0; i < sched->num_constraints; i++) {
 
-    // check if each constraint set is included in the attribs for 
+    // check if each constraint set is included in the attribs for
     // one unique entity in the solution.  'unique' meaning that the
     // entity has not already been mapped to a constraint set.
     //
@@ -219,7 +225,7 @@ solution_validates_constraints(const solution_t *s)
       found = compare_contexts(constraint_set, attributes_set);
     }
 
-    if (found) { 
+    if (found) {
       // mark the solution slot as found so we don't consider it again
       //
       ret_val = 1;
@@ -258,9 +264,9 @@ max_cost_for_slot(int slot_id, int* constraint_map, int *person_id)
   return max;
 }
 
-float 
+float
 incumbent_get_last_weight() {
-  // return the weight for the last element in the incumbent 
+  // return the weight for the last element in the incumbent
   // solution array (the array is ordered from best to worst)
   //
   return incumbent_set[num_requested_solutions - 1].total_weight;
@@ -275,16 +281,16 @@ incumbent_update_and_prune(solution_t *s)
   // update incumbent if the new solution is better, and it satisfies
   // all constraints
   //
-  while (!updated && 
+  while (!updated &&
          index < num_requested_solutions) {
 
-    printf("s->total_weight=%f, incumbent_set[index].total_weight=%f\n",
-           s->total_weight, incumbent_set[index].total_weight);
+    if (debug) {
+      printf("comparing s->total_weight=%f, incumbent_set[index].total_weight=%f\n",
+             s->total_weight, incumbent_set[index].total_weight);
+    }
 
-    if (s->total_weight > incumbent_set[index].total_weight && 
+    if (s->total_weight > incumbent_set[index].total_weight &&
         solution_validates_constraints(s)) {
-
-      printf("set incumbent at %d\n", index);
 
       if (incumbent_count != 0) {
         for (int i = incumbent_count-1; i > index; i--) {
@@ -304,8 +310,11 @@ incumbent_update_and_prune(solution_t *s)
   }
 
   if (updated && debug) {
-    printf("%s: new incumbent, weight %1.3f, at depth %d\n",
-	   __FUNCTION__, incumbent_set[index].total_weight, incumbent_set[index].total_depth);
+    for (int i = 0; i < incumbent_count; i++) {
+      printf("%s: incumbent %d -> weight %1.3f, at depth %d\n",
+             __FUNCTION__, i, incumbent_set[i].total_weight,
+             incumbent_set[i].total_depth);
+    }
   }
 
   // we are done with this branch
@@ -615,7 +624,7 @@ VALUE method_schedule_free(VALUE self)
       safe_free(sched->attribs[i]->values);
       safe_free(sched->attribs[i]);
     }
-    
+
     for (int i = 0; i < sched->num_constraints; i++) {
       safe_free(sched->constraints[i]->values);
       safe_free(sched->constraints[i]);
@@ -638,7 +647,7 @@ VALUE method_schedule_print(VALUE self)
   // ==============================================
   // 00      1.222 1.133 2.111 0.111      1 3 5 7 9
   // 00      1.222 1.133 2.111 0.111      1 3 5 7
-  // 00      1.222 1.133 2.111            1 
+  // 00      1.222 1.133 2.111            1
   //
   // constraint    values
   // =====================
@@ -722,7 +731,7 @@ VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids)
     // add one new attributes structure to the schedule to track the
     // entity's attributes
     //
-    sched->attribs = 
+    sched->attribs =
       realloc(sched->attribs, sched->num_people * sizeof(sched->attribs));
     sched->attribs[index] = calloc(1, sizeof(context_t));
 
@@ -762,11 +771,11 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE constraint_ids)
 
     index = sched->num_constraints;
 
-    // add one new constraints structure to the schedule 
+    // add one new constraints structure to the schedule
     // for this new set of constraints
     //
     sched->num_constraints += 1;
-    sched->constraints = 
+    sched->constraints =
       realloc(sched->constraints, sched->num_constraints * sizeof(sched->constraints));
     sched->constraints[index] = calloc(1, sizeof(context_t));
 
@@ -809,7 +818,7 @@ VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_
   // initialize the bb proces
   //
   num_expanded_solutions = 0;
-  num_requested_solutions = NUM2INT(number_of_solutions_to_find);
+  num_requested_solutions = FIX2UINT(number_of_solutions_to_find);
   incumbent_set = calloc(num_requested_solutions, sizeof(solution_t));
   incumbent_count = 0;
   create_root(&root);
@@ -827,9 +836,9 @@ VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_
     printf("%s: no solutions found\n", __FUNCTION__);
     goto bail;
   }
-  
+
   hash = rb_hash_new();
-  
+
   // build a hash containing the solution sets
   //
   int i = 0;
