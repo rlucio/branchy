@@ -591,7 +591,9 @@ VALUE method_schedule_free(VALUE self);
 VALUE method_schedule_print(VALUE self);
 VALUE method_schedule_set_weight(VALUE self, VALUE weights, VALUE attribute_ids);
 VALUE method_schedule_set_constraints(VALUE self, VALUE constraints);
-VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_find);
+VALUE method_schedule_compute_solution(VALUE self, 
+                                       VALUE number_of_solutions_to_find,
+                                       VALUE returned_weights_hash);
 
 
 // The initialization method for this module
@@ -603,7 +605,7 @@ void Init_branchy() {
   rb_define_method(cBranchy, "schedule_print", method_schedule_print, 0);
   rb_define_method(cBranchy, "schedule_set_weight", method_schedule_set_weight, 2);
   rb_define_method(cBranchy, "schedule_set_constraints", method_schedule_set_constraints, 1);
-  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 1);
+  rb_define_method(cBranchy, "schedule_compute_solution", method_schedule_compute_solution, 2);
 }
 
 VALUE method_schedule_create(VALUE self, VALUE number_of_slots) {
@@ -802,7 +804,9 @@ VALUE method_schedule_set_constraints(VALUE self, VALUE constraint_ids)
   return Qfalse;
 }
 
-VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_find)
+VALUE method_schedule_compute_solution(VALUE self, 
+                                       VALUE number_of_solutions_to_find, 
+                                       VALUE returned_weights_hash)
 {
   solution_t *root = NULL;
 
@@ -853,7 +857,13 @@ VALUE method_schedule_compute_solution(VALUE self, VALUE number_of_solutions_to_
       rb_ary_push(arr, INT2NUM(incumbent_set[i].node_list[j].person_id));
     }
 
-    rb_hash_aset(hash, INT2NUM(i++), arr);
+    rb_hash_aset(hash, INT2NUM(i), arr);
+
+    if (!NIL_P(returned_weights_hash)) {
+      rb_hash_aset(returned_weights_hash, INT2NUM(i), rb_float_new(incumbent_set[i].total_weight));
+    }
+
+    i++;
   }
 
  bail:

@@ -122,7 +122,7 @@ class TestBranchy < Test::Unit::TestCase
     context "with valid params" do
       should "compute a nil solution for an empty schedule" do
         @s.schedule_create(0)
-        assert_equal nil, @s.schedule_compute_solution(1)
+        assert_equal nil, @s.schedule_compute_solution(1, nil)
         @s.schedule_free()
       end
 
@@ -145,7 +145,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal nil, @s.schedule_compute_solution(1)
+        assert_equal nil, @s.schedule_compute_solution(1, nil)
         @s.schedule_free()
       end
 
@@ -168,7 +168,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[0, 2, 1, 3]}, @s.schedule_compute_solution(1))
+        assert_equal({0=>[0, 2, 1, 3]}, @s.schedule_compute_solution(1, nil))
         @s.schedule_free()
       end
 
@@ -191,7 +191,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[0, 1, 2, 3]}, @s.schedule_compute_solution(1))
+        assert_equal({0=>[0, 1, 2, 3]}, @s.schedule_compute_solution(1, nil))
         @s.schedule_free()
       end
 
@@ -214,7 +214,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal nil, @s.schedule_compute_solution(1)
+        assert_equal nil, @s.schedule_compute_solution(1, nil)
         @s.schedule_free()
       end
 
@@ -237,7 +237,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[2, 0, 1, 3]}, @s.schedule_compute_solution(1))
+        assert_equal({0=>[2, 0, 1, 3]}, @s.schedule_compute_solution(1, nil))
         @s.schedule_free()
       end
 
@@ -266,7 +266,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[2, 3, 4, 9]}, @s.schedule_compute_solution(1))
+        assert_equal({0=>[2, 3, 4, 9]}, @s.schedule_compute_solution(1, nil))
         @s.schedule_free()
       end
 
@@ -286,7 +286,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[0, 1, 2, 3]}, @s.schedule_compute_solution(1))
+        assert_equal({0=>[0, 1, 2, 3]}, @s.schedule_compute_solution(1, nil))
         @s.schedule_free()
       end
 
@@ -317,8 +317,9 @@ class TestBranchy < Test::Unit::TestCase
         @s.schedule_set_constraints([1])
 
         @s.schedule_print()
-
-        assert_equal({0=>[2, 1]}, @s.schedule_compute_solution(1))
+        weights_hash = {}
+        assert_equal({0=>[2, 1]}, @s.schedule_compute_solution(1, weights_hash))
+        assert_equal({0=>2.0}, weights_hash)
         @s.schedule_free()
       end
 
@@ -347,7 +348,9 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         @s.schedule_print()
-        assert_equal({0=>[2, 3, 4, 9], 1=>[2, 4, 3, 9], 2=>[2, 8, 3, 9]}, @s.schedule_compute_solution(3))
+        weights_hash = {}
+        assert_equal({0=>[2, 3, 4, 9], 1=>[2, 4, 3, 9], 2=>[2, 8, 3, 9]}, @s.schedule_compute_solution(3, weights_hash))
+        assert_equal({0=>4.8580002784729, 1=>4.8580002784729, 2=>4.8580002784729}, weights_hash)
         @s.schedule_free()
       end
     end
@@ -368,7 +371,7 @@ class TestBranchy < Test::Unit::TestCase
           @s.schedule_set_constraints([0])
         end
 
-        assert_equal nil, @s.schedule_compute_solution(1)
+        assert_equal nil, @s.schedule_compute_solution(1, nil)
         @s.schedule_free()
       end
 
@@ -388,7 +391,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_raise RangeError do
-          @s.schedule_compute_solution(-1)
+          @s.schedule_compute_solution(-1, nil)
         end
         @s.schedule_free()
       end
@@ -409,7 +412,7 @@ class TestBranchy < Test::Unit::TestCase
         end
 
         assert_raise TypeError do
-          @s.schedule_compute_solution("foo")
+          @s.schedule_compute_solution("foo", nil)
         end
         @s.schedule_free()
       end
