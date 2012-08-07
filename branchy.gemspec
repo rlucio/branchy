@@ -5,11 +5,11 @@
 
 Gem::Specification.new do |s|
   s.name = "branchy"
-  s.version = "0.3.0"
+  s.version = "0.3.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Ryan Lucio"]
-  s.date = "2012-07-31"
+  s.date = "2012-08-07"
   s.description = "scheduler for the lasso project"
   s.email = "ryan.lucio@sv.cmu.edu"
   s.extensions = ["ext/branchy/extconf.rb"]
